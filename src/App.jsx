@@ -10,6 +10,8 @@ import PeerTutors from './components/PeerTutors';
 import RatingModal from './components/RatingModal';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
+import SupabaseModal from './components/SupabaseModal';
+import { getSupabase, isSupabaseConnected } from './lib/supabase';
 import { 
   CURRENT_USER, 
   MOCK_USERS,
@@ -66,8 +68,10 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [authModalConfig, setAuthModalConfig] = useState(null); // { isOpen: true, mode: 'login' | 'register' }
+  const [showSupabaseModal, setShowSupabaseModal] = useState(false);
+  const [authModalConfig, setAuthModalConfig] = useState(null);
   const [previewNote, setPreviewNote] = useState(null);
+  const [supabaseConnected, setSupabaseConnected] = useState(isSupabaseConnected());
 
   const showNotification = (message, type = 'success') => {
     setToast({ message, type });
@@ -75,7 +79,7 @@ export default function App() {
   };
 
   // Auth Handlers
-  const handleRegister = (newUserData) => {
+  const handleRegister = async (newUserData) => {
     // Check if user already exists
     const exists = registeredUsers.some(
       u => u.uid.toLowerCase() === newUserData.uid.toLowerCase() || 
@@ -91,7 +95,26 @@ export default function App() {
     setRegisteredUsers(updatedList);
     setUser(newUserData);
     setAuthModalConfig(null);
-    showNotification(`Welcome to campus, ${newUserData.name}! Account registered with +100 bonus points 🎉`);
+
+    // If Supabase is connected, sync directly
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').insert([{
+          name: newUserData.name,
+          uid: newUserData.uid,
+          college: newUserData.college,
+          course: newUserData.course,
+          semester: newUserData.semester,
+          email: newUserData.email,
+          points: newUserData.points
+        }]);
+      } catch (e) {
+        console.warn("Supabase profile sync:", e);
+      }
+    }
+
+    showNotification(`Welcome to campus, ${newUserData.name}! Registered with +100 bonus points 🎉`);
   };
 
   const handleLogin = ({ email, user: demoUser }) => {
@@ -102,7 +125,6 @@ export default function App() {
       return;
     }
 
-    // Match by email or UID or name
     const found = registeredUsers.find(
       u => (u.email && u.email.toLowerCase() === email.toLowerCase()) ||
            u.uid.toLowerCase() === email.toLowerCase() ||
@@ -114,7 +136,6 @@ export default function App() {
       setAuthModalConfig(null);
       showNotification(`Welcome back, ${found.name}! 🚀`);
     } else {
-      // Fallback: log in with current entered credentials
       const tempUser = {
         uid: email.startsWith('STD-') ? email : `STD-2025-${Math.floor(1000 + Math.random() * 9000)}`,
         name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -145,7 +166,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handlePostDoubt = (newDoubtData) => {
+  const handlePostDoubt = async (newDoubtData) => {
     if (!user) {
       setAuthModalConfig({ isOpen: true, mode: 'register' });
       showNotification("Please sign in or register to post academic doubts.", "error");
@@ -170,12 +191,33 @@ export default function App() {
 
     setDoubts([newDoubt, ...doubts]);
     setUser(prev => ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }));
+    
+    // Sync to Supabase if connected
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('doubts').insert([{
+          title: newDoubt.title,
+          question_text: newDoubt.questionText,
+          code_snippet: newDoubt.codeSnippet,
+          subject: newDoubt.subject,
+          semester: newDoubt.semester,
+          author_name: newDoubt.authorName,
+          author_uid: newDoubt.authorUid,
+          author_college: newDoubt.authorCollege,
+          views_count: 1
+        }]);
+      } catch (e) {
+        console.warn("Supabase doubt insert:", e);
+      }
+    }
+
     showNotification("Your doubt has been posted to the campus community! 🎉");
     setActiveDoubtId(newDoubt.id);
     setCurrentTab('doubts');
   };
 
-  const handleAddAnswer = (doubtId, answerText) => {
+  const handleAddAnswer = async (doubtId, answerText) => {
     if (!user) {
       setAuthModalConfig({ isOpen: true, mode: 'register' });
       showNotification("Please sign in or register to post an answer.", "error");
@@ -206,6 +248,23 @@ export default function App() {
     }));
 
     setUser(prev => ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }));
+    
+    // Sync to Supabase if connected
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('answers').insert([{
+          author_name: newAnswer.authorName,
+          author_uid: newAnswer.authorUid,
+          answer_text: newAnswer.answerText,
+          upvotes_count: 0,
+          is_best_answer: false
+        }]);
+      } catch (e) {
+        console.warn("Supabase answer insert:", e);
+      }
+    }
+
     showNotification("Answer posted! You earned +25 peer contribution points 🚀");
   };
 
@@ -337,6 +396,7 @@ export default function App() {
         user={user}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenAuth={(mode) => setAuthModalConfig({ isOpen: true, mode })}
+        onOpenSupabase={() => setShowSupabaseModal(true)}
         onLogout={handleLogout}
         doubtsCount={doubts.length}
       />
@@ -453,6 +513,16 @@ export default function App() {
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         setActiveDoubtId={setActiveDoubtId}
+      />
+
+      {/* Supabase Cloud Data Inspector Modal */}
+      <SupabaseModal 
+        isOpen={showSupabaseModal}
+        onClose={() => setShowSupabaseModal(false)}
+        onConnectedChange={(status) => {
+          setSupabaseConnected(status);
+          showNotification(status ? "Supabase Cloud Database connected! ⚡" : "Supabase disconnected.");
+        }}
       />
 
       {/* Authentication Modal (Sign In & Register) */}

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { isSupabaseConnected } from '../lib/supabase';
 
 export default function Navbar({ 
   currentTab, 
@@ -8,11 +9,13 @@ export default function Navbar({
   user, 
   onOpenProfile, 
   onOpenAuth, 
+  onOpenSupabase,
   onLogout, 
   doubtsCount 
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const isConnected = isSupabaseConnected();
 
   // Close dropdown when clicked outside
   useEffect(() => {
@@ -108,8 +111,23 @@ export default function Navbar({
             </button>
           </nav>
 
-          {/* User Account / Auth Section */}
+          {/* User Account & Supabase Database Pill */}
           <div className="flex items-center gap-2 sm:gap-3" ref={dropdownRef}>
+            
+            {/* Supabase Status Button */}
+            <button
+              onClick={onOpenSupabase}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                isConnected
+                  ? 'bg-teal-950/70 border-teal-500/40 text-teal-300 hover:bg-teal-900'
+                  : 'bg-navy-800 border-navy-700 text-cream-300 hover:border-amber-400/60 hover:text-amber-300'
+              }`}
+              title="Click to view Supabase database data and settings"
+            >
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`}></span>
+              <span>{isConnected ? 'Supabase DB' : 'Plug in Supabase'}</span>
+            </button>
+
             {user ? (
               <div className="relative">
                 <button
@@ -151,6 +169,14 @@ export default function Navbar({
                       >
                         <span>👤</span>
                         <span>View Student Profile</span>
+                      </button>
+
+                      <button
+                        onClick={() => { setDropdownOpen(false); onOpenSupabase(); }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-50 flex items-center gap-2"
+                      >
+                        <span>⚡</span>
+                        <span>Supabase Data Inspector</span>
                       </button>
 
                       <button
