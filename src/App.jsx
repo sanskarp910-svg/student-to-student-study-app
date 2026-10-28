@@ -35,22 +35,30 @@ export default function App() {
     }
   });
 
-  // Current Logged-In User: Defaults to null so it asks for login as soon as website opens!
+  // Current Logged-In User:
+  // Explicitly wipe out any old preset stored in localStorage so site ALWAYS asks for login upon opening!
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('study_app_current_user');
-      return saved ? JSON.parse(saved) : null;
+      // Purge any legacy preset from previous builds
+      localStorage.removeItem('study_app_current_user');
+      const sessionUser = sessionStorage.getItem('study_app_session_user');
+      return sessionUser ? JSON.parse(sessionUser) : null;
     } catch {
       return null;
     }
   });
 
-  // Save changes to localStorage
+  // Keep active session in sessionStorage during current browsing tab only
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('study_app_current_user', JSON.stringify(user));
-    } else {
+    try {
       localStorage.removeItem('study_app_current_user');
+      if (user) {
+        sessionStorage.setItem('study_app_session_user', JSON.stringify(user));
+      } else {
+        sessionStorage.removeItem('study_app_session_user');
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, [user]);
 
@@ -155,6 +163,10 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.removeItem('study_app_current_user');
+      sessionStorage.removeItem('study_app_session_user');
+    } catch (e) {}
     setUser(null);
     setCurrentTab('home');
     setActiveDoubtId(null);
