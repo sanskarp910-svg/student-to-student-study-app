@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import HomeDashboard from './components/HomeDashboard';
@@ -11,6 +12,9 @@ import RatingModal from './components/RatingModal';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import LoginScreen from './components/LoginScreen';
+import UploadNoteModal from './components/UploadNoteModal';
+import CreateGroupModal from './components/CreateGroupModal';
+import BookTutorModal from './components/BookTutorModal';
 import { 
   supabase, 
   isConfigured as isSupabaseConfigured, 
@@ -47,8 +51,8 @@ function normalizeProfile(rawProfile, fallbackUser) {
 }
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState('home');
-  const [activeDoubtId, setActiveDoubtId] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // 100% Cloud User State (No localStorage for DB)
   const [user, setUser] = useState(null);
@@ -66,6 +70,9 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [authModalConfig, setAuthModalConfig] = useState(null);
   const [previewNote, setPreviewNote] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [bookingTutor, setBookingTutor] = useState(null);
 
   const showNotification = (message, type = 'success') => {
     setToast({ message, type });
@@ -222,14 +229,12 @@ export default function App() {
       await cloudAuth.signOut();
     }
     setUser(null);
-    setCurrentTab('home');
-    setActiveDoubtId(null);
+    navigate('/');
     showNotification("You have been signed out from the cloud.");
   };
 
   const handleOpenDoubt = (id) => {
-    setActiveDoubtId(id);
-    setCurrentTab('doubts');
+    navigate(`/doubts/${id}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -274,8 +279,7 @@ export default function App() {
     }
 
     showNotification("Your doubt has been posted to the campus community! 🎉");
-    setActiveDoubtId(newDoubt.id);
-    setCurrentTab('doubts');
+    navigate(`/doubts/${newDoubt.id}`);
   };
 
   // Cloud Answer Creation
@@ -297,7 +301,7 @@ export default function App() {
       if (d.id === doubtId) {
         return {
           ...d,
-          answers: [...d.answers, newAnswer]
+          answers: [...(d.answers || []), newAnswer]
         };
       }
       return d;
@@ -323,15 +327,23 @@ export default function App() {
   };
 
   const handleUpvoteAnswer = (doubtId, answerId) => {
+    let newVotes = 1;
     setDoubts(prev => prev.map(d => {
       if (d.id === doubtId) {
         return {
           ...d,
-          answers: d.answers.map(a => a.id === answerId ? { ...a, upvotes: a.upvotes + 1 } : a)
+          answers: (d.answers || []).map(a => {
+            if (a.id === answerId) {
+              newVotes = (a.upvotes || 0) + 1;
+              return { ...a, upvotes: newVotes };
+            }
+            return a;
+          })
         };
       }
       return d;
     }));
+    cloudDoubts.upvoteAnswer(answerId, newVotes);
     showNotification("Upvoted! Thank you for encouraging quality answers.");
   };
 
@@ -341,7 +353,7 @@ export default function App() {
         return {
           ...d,
           bestAnswerFlag: true,
-          answers: d.answers.map(a => ({
+          answers: (d.answers || []).map(a => ({
             ...a,
             isBestAnswer: a.id === answerId
           }))
@@ -349,6 +361,7 @@ export default function App() {
       }
       return d;
     }));
+    cloudDoubts.markBestAnswer(doubtId, answerId);
     showNotification("Marked as Best Answer! ⭐ Verified badge awarded.");
   };
 
@@ -356,14 +369,56 @@ export default function App() {
     setGroups(prev => prev.map(g => {
       if (g.id === groupId) {
         const nextStatus = !g.isJoined;
+        const newCount = nextStatus ? g.membersCount + 1 : Math.max(1, g.membersCount - 1);
+        cloudGroups.toggleJoin(groupId, newCount);
         return {
           ...g,
           isJoined: nextStatus,
-          membersCount: nextStatus ? g.membersCount + 1 : g.membersCount - 1
+          membersCount: newCount
         };
       }
       return g;
     }));
+    showNotification("Group membership updated! 🤝");
+  };
+
+  const handleUploadNote = async (newNote) => {
+    setNotes(prev => [newNote, ...prev]);
+    setUser(prev => ({ ...prev, points: (prev.points || 0) + 20 }));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await cloudNotes.create({
+          title: newNote.title,
+          subject: newNote.subject,
+          semester: newNote.semester,
+          description: newNote.description,
+          pages_count: newNote.pages,
+          file_size: newNote.fileSize,
+          uploader_name: newNote.uploaderName,
+          uploader_uid: newNote.uploaderUid,
+          downloads_count: 0
+        });
+      } catch (err) {
+        console.warn("Cloud note upload:", err);
+      }
+    }
+    showNotification("Note uploaded successfully! +20 points earned 🎉");
+  };
+
+  const handleDownloadNote = (note) => {
+    const newCount = (note.downloads || note.downloads_count || 0) + 1;
+    setNotes(prev => prev.map(n => n.id === note.id ? { ...n, downloads: newCount } : n));
+    cloudNotes.incrementDownload(note.id, newCount);
+    showNotification(`Downloading ${note.title}... (${note.fileSize || '2.4 MB'})`);
+  };
+
+  const handleCreateGroup = (newGroup) => {
+    setGroups(prev => [newGroup, ...prev]);
+    showNotification(`Study Group "${newGroup.name}" launched! 👥`);
+  };
+
+  const handleConfirmBooking = ({ tutor, topic, date, timeSlot }) => {
+    showNotification(`Session booked with ${tutor.name} (${date}, ${timeSlot})! 🎓`);
   };
 
   const handleSubmitRating = (ratingScore, feedbackText) => {
@@ -463,10 +518,6 @@ export default function App() {
 
       {/* Top Navbar */}
       <Navbar 
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        activeDoubtId={activeDoubtId}
-        setActiveDoubtId={setActiveDoubtId}
         user={user}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenAuth={(mode) => setAuthModalConfig({ isOpen: true, mode })}
@@ -475,91 +526,108 @@ export default function App() {
         doubtsCount={doubts.length}
       />
 
-      {/* Main Container */}
+      {/* Main Container with Separate Dynamic Web Pages */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
-        {currentTab === 'home' && !activeDoubtId && (
-          <HomeDashboard 
-            user={user}
-            doubts={doubts}
-            notes={notes}
-            groups={groups}
-            onSelectTab={(tab) => { setCurrentTab(tab); setActiveDoubtId(null); }}
-            onOpenDoubt={handleOpenDoubt}
-            onSelectSubject={(subj) => { setCurrentTab('doubts'); }}
-            onPreviewNote={(note) => setPreviewNote(note)}
-            onDownloadNote={(note) => {
-              setNotes(prev => prev.map(n => n.id === note.id ? { ...n, downloads: n.downloads + 1 } : n));
-              showNotification(`Downloading ${note.title}... (${note.fileSize})`);
-            }}
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <HomeDashboard 
+                user={user}
+                doubts={doubts}
+                notes={notes}
+                groups={groups}
+                onPreviewNote={(note) => setPreviewNote(note)}
+                onDownloadNote={handleDownloadNote}
+              />
+            } 
           />
-        )}
-
-        {currentTab === 'ask' && (
-          <AskDoubt 
-            onSubmitDoubt={handlePostDoubt}
-            onCancel={() => setCurrentTab('home')}
-            defaultSemester={user.semester}
+          <Route 
+            path="/ask" 
+            element={
+              <AskDoubt 
+                onSubmitDoubt={handlePostDoubt}
+                defaultSemester={user.semester}
+              />
+            } 
           />
-        )}
-
-        {currentTab === 'doubts' && (
-          <DoubtBoard 
-            doubts={doubts}
-            activeDoubtId={activeDoubtId}
-            setActiveDoubtId={setActiveDoubtId}
-            onPostNewClick={() => { setCurrentTab('ask'); setActiveDoubtId(null); }}
-            onAddAnswer={handleAddAnswer}
-            onUpvoteAnswer={handleUpvoteAnswer}
-            onMarkBestAnswer={handleMarkBestAnswer}
-            onRateAnswer={(doubtId, ans) => setShowRatingModal({
-              targetType: 'answer',
-              doubtId,
-              targetId: ans.id,
-              targetName: ans.authorName
-            })}
-            user={user}
+          <Route 
+            path="/doubts" 
+            element={
+              <DoubtBoard 
+                doubts={doubts}
+                onAddAnswer={handleAddAnswer}
+                onUpvoteAnswer={handleUpvoteAnswer}
+                onMarkBestAnswer={handleMarkBestAnswer}
+                onRateAnswer={(doubtId, ans) => setShowRatingModal({
+                  targetType: 'answer',
+                  doubtId,
+                  targetId: ans.id,
+                  targetName: ans.authorName
+                })}
+                user={user}
+              />
+            } 
           />
-        )}
-
-        {currentTab === 'notes' && (
-          <NotesLibrary 
-            notes={notes}
-            onPreviewNote={(note) => setPreviewNote(note)}
-            onDownloadNote={(note) => {
-              setNotes(prev => prev.map(n => n.id === note.id ? { ...n, downloads: n.downloads + 1 } : n));
-              showNotification(`Downloading ${note.title}... (${note.fileSize})`);
-            }}
-            onOpenUploadModal={() => showNotification("Upload note modal active.")}
+          <Route 
+            path="/doubts/:id" 
+            element={
+              <DoubtBoard 
+                doubts={doubts}
+                onAddAnswer={handleAddAnswer}
+                onUpvoteAnswer={handleUpvoteAnswer}
+                onMarkBestAnswer={handleMarkBestAnswer}
+                onRateAnswer={(doubtId, ans) => setShowRatingModal({
+                  targetType: 'answer',
+                  doubtId,
+                  targetId: ans.id,
+                  targetName: ans.authorName
+                })}
+                user={user}
+              />
+            } 
           />
-        )}
-
-        {currentTab === 'groups' && (
-          <StudyGroups 
-            groups={groups}
-            onToggleJoinGroup={handleToggleJoinGroup}
-            onOpenCreateModal={() => showNotification("Create group modal active.")}
+          <Route 
+            path="/notes" 
+            element={
+              <NotesLibrary 
+                notes={notes}
+                onPreviewNote={(note) => setPreviewNote(note)}
+                onDownloadNote={handleDownloadNote}
+                onOpenUploadModal={() => setShowUploadModal(true)}
+              />
+            } 
           />
-        )}
-
-        {currentTab === 'tutors' && (
-          <PeerTutors 
-            tutors={tutors}
-            onBookTutor={(tutor) => showNotification(`Session request sent to ${tutor.name}! They will confirm via college email.`)}
-            onRateTutor={(tutor) => setShowRatingModal({
-              targetType: 'tutor',
-              targetId: tutor.id,
-              targetName: tutor.name
-            })}
+          <Route 
+            path="/groups" 
+            element={
+              <StudyGroups 
+                groups={groups}
+                onToggleJoinGroup={handleToggleJoinGroup}
+                onOpenCreateModal={() => setShowCreateGroupModal(true)}
+              />
+            } 
           />
-        )}
+          <Route 
+            path="/tutors" 
+            element={
+              <PeerTutors 
+                tutors={tutors}
+                onBookTutor={(tutor) => setBookingTutor(tutor)}
+                onRateTutor={(tutor) => setShowRatingModal({
+                  targetType: 'tutor',
+                  targetId: tutor.id,
+                  targetName: tutor.name
+                })}
+              />
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <BottomNav 
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        setActiveDoubtId={setActiveDoubtId}
-      />
+      <BottomNav />
 
       {/* Authentication Modal (when switching accounts or registering from menu) */}
       {authModalConfig && (
@@ -584,6 +652,36 @@ export default function App() {
         <ProfileModal 
           user={user}
           onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
+      {/* Dynamic Upload Note Modal */}
+      {showUploadModal && (
+        <UploadNoteModal 
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onUpload={handleUploadNote}
+          user={user}
+        />
+      )}
+
+      {/* Dynamic Create Study Group Modal */}
+      {showCreateGroupModal && (
+        <CreateGroupModal 
+          isOpen={showCreateGroupModal}
+          onClose={() => setShowCreateGroupModal(false)}
+          onCreateGroup={handleCreateGroup}
+          user={user}
+        />
+      )}
+
+      {/* Dynamic Book Tutor Modal */}
+      {bookingTutor && (
+        <BookTutorModal 
+          tutor={bookingTutor}
+          isOpen={Boolean(bookingTutor)}
+          onClose={() => setBookingTutor(null)}
+          onConfirmBooking={handleConfirmBooking}
         />
       )}
 
@@ -619,10 +717,10 @@ export default function App() {
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-navy-500 font-mono">{previewNote.fileSize} • {previewNote.downloads} peers downloaded</span>
+              <span className="text-xs text-navy-500 font-mono">{previewNote.fileSize} • {previewNote.downloads || 0} peers downloaded</span>
               <button 
                 onClick={() => {
-                  showNotification(`Downloading "${previewNote.title}"...`);
+                  handleDownloadNote(previewNote);
                   setPreviewNote(null);
                 }}
                 className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"

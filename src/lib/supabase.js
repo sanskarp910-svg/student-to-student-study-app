@@ -168,6 +168,30 @@ export const cloudDoubts = {
 
     if (error) throw error;
     return data;
+  },
+
+  async upvoteAnswer(answerId, newCount) {
+    if (!supabase) return;
+    try {
+      await supabase
+        .from('answers')
+        .update({ upvotes: newCount })
+        .eq('id', answerId);
+    } catch (err) {
+      console.warn("Cloud upvote error:", err);
+    }
+  },
+
+  async markBestAnswer(doubtId, answerId) {
+    if (!supabase) return;
+    try {
+      await Promise.all([
+        supabase.from('answers').update({ is_best_answer: true }).eq('id', answerId),
+        supabase.from('doubts').update({ best_answer_flag: true }).eq('id', doubtId)
+      ]);
+    } catch (err) {
+      console.warn("Cloud markBestAnswer error:", err);
+    }
   }
 };
 
@@ -194,6 +218,18 @@ export const cloudNotes = {
 
     if (error) throw error;
     return data;
+  },
+
+  async incrementDownload(noteId, newCount) {
+    if (!supabase) return;
+    try {
+      await supabase
+        .from('notes')
+        .update({ downloads_count: newCount })
+        .eq('id', noteId);
+    } catch (err) {
+      console.warn("Cloud increment download:", err);
+    }
   }
 };
 
@@ -208,5 +244,17 @@ export const cloudGroups = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  async toggleJoin(groupId, newCount) {
+    if (!supabase) return;
+    try {
+      await supabase
+        .from('study_groups')
+        .update({ members_count: newCount })
+        .eq('id', groupId);
+    } catch (err) {
+      console.warn("Cloud toggle group:", err);
+    }
   }
 };

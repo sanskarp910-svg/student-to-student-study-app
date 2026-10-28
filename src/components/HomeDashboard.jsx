@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function HomeDashboard({ 
   user, 
@@ -11,6 +12,7 @@ export default function HomeDashboard({
   onPreviewNote, 
   onDownloadNote 
 }) {
+  const navigate = useNavigate();
   const safeUser = user || {
     name: "Student",
     college: "University Campus",
@@ -47,7 +49,7 @@ export default function HomeDashboard({
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 mt-5">
               <button 
-                onClick={() => onSelectTab('ask')}
+                onClick={() => navigate('/ask')}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-orange-600/30 transition-all flex items-center gap-2 hover:-translate-y-0.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,7 +59,7 @@ export default function HomeDashboard({
               </button>
 
               <button 
-                onClick={() => onSelectTab('notes')}
+                onClick={() => navigate('/notes')}
                 className="bg-cream-100 hover:bg-white text-navy-900 font-bold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:-translate-y-0.5"
               >
                 <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +69,7 @@ export default function HomeDashboard({
               </button>
 
               <button 
-                onClick={() => onSelectTab('groups')}
+                onClick={() => navigate('/groups')}
                 className="bg-navy-800/80 hover:bg-navy-700 text-cream-100 font-semibold text-sm px-4 py-2.5 rounded-xl border border-navy-600 transition-all flex items-center gap-2"
               >
                 <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +117,10 @@ export default function HomeDashboard({
           {safeSubjects.map((sub) => (
             <button
               key={sub}
-              onClick={() => onSelectSubject(sub)}
+              onClick={() => {
+                navigate('/doubts');
+                if (onSelectSubject) onSelectSubject(sub);
+              }}
               className="flex-shrink-0 bg-cream-100 hover:bg-teal-50 hover:border-teal-400 text-navy-800 text-xs font-semibold px-3.5 py-2 rounded-xl border border-cream-200 transition-all flex items-center gap-1.5 shadow-sm"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
@@ -140,7 +145,7 @@ export default function HomeDashboard({
               <h2 className="text-lg font-bold text-navy-900 tracking-tight">Recent Doubts Feed</h2>
             </div>
             <button 
-              onClick={() => onSelectTab('doubts')}
+              onClick={() => navigate('/doubts')}
               className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
             >
               <span>View All ({doubts.length})</span>
@@ -156,7 +161,7 @@ export default function HomeDashboard({
               return (
                 <div 
                   key={doubt.id}
-                  onClick={() => onOpenDoubt(doubt.id)}
+                  onClick={() => navigate(`/doubts/${doubt.id}`)}
                   className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -221,7 +226,7 @@ export default function HomeDashboard({
               <h2 className="text-lg font-bold text-navy-900 tracking-tight">Popular Notes</h2>
             </div>
             <button 
-              onClick={() => onSelectTab('notes')}
+              onClick={() => navigate('/notes')}
               className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
             >
               <span>All Notes ({notes.length})</span>
@@ -300,7 +305,7 @@ export default function HomeDashboard({
               Join open peer study rooms for Calculus, C Programming, or OS Kernel problem solving.
             </p>
             <button 
-              onClick={() => onSelectTab('groups')}
+              onClick={() => navigate('/groups')}
               className="mt-3.5 w-full bg-cream-50 text-navy-900 hover:bg-white font-bold text-xs py-2 rounded-xl transition shadow"
             >
               Explore Study Groups ({groups.length}) →

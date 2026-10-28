@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { SUBJECT_OPTIONS } from '../data/mockData';
 
 export default function DoubtBoard({ 
   doubts, 
-  activeDoubtId, 
+  activeDoubtId: propActiveDoubtId, 
   setActiveDoubtId, 
   onPostNewClick, 
   onAddAnswer, 
@@ -12,13 +13,17 @@ export default function DoubtBoard({
   onRateAnswer, 
   user 
 }) {
+  const { id: routeDoubtId } = useParams();
+  const navigate = useNavigate();
+  const activeDoubtId = routeDoubtId || propActiveDoubtId;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All Subjects');
   const [replyText, setReplyText] = useState('');
 
   // If viewing a single doubt thread
   if (activeDoubtId) {
-    const doubt = doubts.find(d => d.id === activeDoubtId) || doubts[0];
+    const doubt = doubts.find(d => String(d.id) === String(activeDoubtId)) || doubts[0];
     
     return (
       <div className="space-y-6 max-w-4xl mx-auto animate-fadeIn">
@@ -26,7 +31,10 @@ export default function DoubtBoard({
         {/* Back Button and Subject Badge */}
         <div className="flex items-center justify-between">
           <button 
-            onClick={() => setActiveDoubtId(null)}
+            onClick={() => {
+              navigate('/doubts');
+              if (setActiveDoubtId) setActiveDoubtId(null);
+            }}
             className="inline-flex items-center gap-2 text-xs font-bold text-navy-700 hover:text-navy-950 bg-cream-100 hover:bg-cream-200 px-3.5 py-2 rounded-xl border border-cream-200 transition"
           >
             <span>←</span>
@@ -251,7 +259,10 @@ export default function DoubtBoard({
         </div>
 
         <button 
-          onClick={onPostNewClick}
+          onClick={() => {
+            navigate('/ask');
+            if (onPostNewClick) onPostNewClick();
+          }}
           className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 flex-shrink-0"
         >
           <span className="text-base leading-none">+</span>
@@ -310,7 +321,10 @@ export default function DoubtBoard({
           filteredDoubts.map(doubt => (
             <div 
               key={doubt.id}
-              onClick={() => setActiveDoubtId(doubt.id)}
+              onClick={() => {
+                navigate(`/doubts/${doubt.id}`);
+                if (setActiveDoubtId) setActiveDoubtId(doubt.id);
+              }}
               className="bg-cream-100 hover:bg-white rounded-2xl p-5 sm:p-6 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
             >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">

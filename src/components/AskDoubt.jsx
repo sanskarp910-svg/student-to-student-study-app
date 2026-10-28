@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SUBJECT_OPTIONS, SEMESTER_OPTIONS } from '../data/mockData';
 
 export default function AskDoubt({ onSubmitDoubt, onCancel, defaultSemester = "Semester 4" }) {
+  const navigate = useNavigate();
   const [subject, setSubject] = useState("Maths");
   const [semester, setSemester] = useState(defaultSemester);
   const [title, setTitle] = useState("");
@@ -138,7 +140,7 @@ export default function AskDoubt({ onSubmitDoubt, onCancel, defaultSemester = "S
           <div className="flex items-center justify-end gap-3 pt-2">
             <button 
               type="button"
-              onClick={onCancel}
+              onClick={onCancel || (() => navigate('/doubts'))}
               className="px-5 py-2.5 rounded-xl border border-cream-300 text-navy-700 hover:bg-cream-200 text-sm font-semibold transition"
             >
               Cancel

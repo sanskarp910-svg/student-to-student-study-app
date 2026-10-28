@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { isSupabaseConnected } from '../lib/supabase';
 
 export default function Navbar({ 
-  currentTab, 
-  setCurrentTab, 
-  activeDoubtId, 
-  setActiveDoubtId, 
   user, 
   onOpenProfile, 
   onOpenAuth, 
@@ -13,9 +10,16 @@ export default function Navbar({
   onLogout, 
   doubtsCount 
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const isConnected = typeof isSupabaseConnected === 'function' ? isSupabaseConnected() : Boolean(isSupabaseConnected);
+
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   // Close dropdown when clicked outside
   useEffect(() => {
@@ -35,7 +39,7 @@ export default function Navbar({
           
           {/* Brand Logo & Name */}
           <div 
-            onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+            onClick={() => navigate('/')}
             className="flex items-center gap-3 cursor-pointer select-none group"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-900/30 group-hover:scale-105 transition-transform">
@@ -55,18 +59,18 @@ export default function Navbar({
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
             <button 
-              onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'home' && !activeDoubtId ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                isActive('/') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Dashboard</span>
             </button>
 
             <button 
-              onClick={() => { setCurrentTab('ask'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/ask')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'ask' ? 'bg-orange-600 text-white shadow-md' : 'text-orange-400 hover:bg-orange-600/20'
+                isActive('/ask') ? 'bg-orange-600 text-white shadow-md' : 'text-orange-400 hover:bg-orange-600/20'
               }`}
             >
               <span className="text-base font-bold leading-none">+</span>
@@ -74,9 +78,9 @@ export default function Navbar({
             </button>
 
             <button 
-              onClick={() => { setCurrentTab('doubts'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/doubts')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'doubts' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                isActive('/doubts') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Doubt Board</span>
@@ -84,27 +88,27 @@ export default function Navbar({
             </button>
 
             <button 
-              onClick={() => { setCurrentTab('notes'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/notes')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'notes' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                isActive('/notes') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Notes Library</span>
             </button>
 
             <button 
-              onClick={() => { setCurrentTab('groups'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/groups')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'groups' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                isActive('/groups') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Study Groups</span>
             </button>
 
             <button 
-              onClick={() => { setCurrentTab('tutors'); setActiveDoubtId(null); }}
+              onClick={() => navigate('/tutors')}
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                currentTab === 'tutors' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                isActive('/tutors') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Peer Tutors</span>

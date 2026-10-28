@@ -1,15 +1,24 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export default function BottomNav({ currentTab, setCurrentTab, setActiveDoubtId }) {
+export default function BottomNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-navy-900 border-t border-navy-800 z-40 safe-bottom shadow-elevated">
       <div className="grid grid-cols-5 items-center justify-around py-2 px-1">
         
         {/* Home */}
         <button 
-          onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+          onClick={() => navigate('/')}
           className={`flex flex-col items-center justify-center py-1 transition ${
-            currentTab === 'home' ? 'text-teal-400 font-bold' : 'text-cream-300'
+            isActive('/') ? 'text-teal-400 font-bold' : 'text-cream-300'
           }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,9 +29,9 @@ export default function BottomNav({ currentTab, setCurrentTab, setActiveDoubtId 
 
         {/* Doubts */}
         <button 
-          onClick={() => { setCurrentTab('doubts'); setActiveDoubtId(null); }}
+          onClick={() => navigate('/doubts')}
           className={`flex flex-col items-center justify-center py-1 transition ${
-            currentTab === 'doubts' ? 'text-teal-400 font-bold' : 'text-cream-300'
+            isActive('/doubts') ? 'text-teal-400 font-bold' : 'text-cream-300'
           }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +42,7 @@ export default function BottomNav({ currentTab, setCurrentTab, setActiveDoubtId 
 
         {/* Center Prominent CTA: Ask a Doubt */}
         <button 
-          onClick={() => { setCurrentTab('ask'); setActiveDoubtId(null); }}
+          onClick={() => navigate('/ask')}
           className="flex flex-col items-center justify-center -mt-4"
         >
           <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shadow-lg shadow-orange-600/40 border-2 border-navy-900 active:scale-95 transition-transform">
@@ -44,9 +53,9 @@ export default function BottomNav({ currentTab, setCurrentTab, setActiveDoubtId 
 
         {/* Notes */}
         <button 
-          onClick={() => { setCurrentTab('notes'); setActiveDoubtId(null); }}
+          onClick={() => navigate('/notes')}
           className={`flex flex-col items-center justify-center py-1 transition ${
-            currentTab === 'notes' ? 'text-teal-400 font-bold' : 'text-cream-300'
+            isActive('/notes') ? 'text-teal-400 font-bold' : 'text-cream-300'
           }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,9 +66,9 @@ export default function BottomNav({ currentTab, setCurrentTab, setActiveDoubtId 
 
         {/* Groups */}
         <button 
-          onClick={() => { setCurrentTab('groups'); setActiveDoubtId(null); }}
+          onClick={() => navigate('/groups')}
           className={`flex flex-col items-center justify-center py-1 transition ${
-            currentTab === 'groups' ? 'text-teal-400 font-bold' : 'text-cream-300'
+            isActive('/groups') ? 'text-teal-400 font-bold' : 'text-cream-300'
           }`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
