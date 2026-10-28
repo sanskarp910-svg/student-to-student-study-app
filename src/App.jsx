@@ -11,9 +11,9 @@ import RatingModal from './components/RatingModal';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import SupabaseModal from './components/SupabaseModal';
+import LoginScreen from './components/LoginScreen';
 import { getSupabase, isSupabaseConnected } from './lib/supabase';
 import { 
-  CURRENT_USER, 
   MOCK_USERS,
   INITIAL_DOUBTS, 
   INITIAL_NOTES, 
@@ -35,13 +35,13 @@ export default function App() {
     }
   });
 
-  // Current Logged-In User (Persisted in localStorage)
+  // Current Logged-In User: Defaults to null so it asks for login as soon as website opens!
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('study_app_current_user');
-      return saved ? JSON.parse(saved) : CURRENT_USER;
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return CURRENT_USER;
+      return null;
     }
   });
 
@@ -80,7 +80,6 @@ export default function App() {
 
   // Auth Handlers
   const handleRegister = async (newUserData) => {
-    // Check if user already exists
     const exists = registeredUsers.some(
       u => u.uid.toLowerCase() === newUserData.uid.toLowerCase() || 
            (u.email && u.email.toLowerCase() === newUserData.email.toLowerCase())
@@ -121,7 +120,7 @@ export default function App() {
     if (demoUser) {
       setUser(demoUser);
       setAuthModalConfig(null);
-      showNotification(`Switched to ${demoUser.name} (${demoUser.uid})`);
+      showNotification(`Logged in as ${demoUser.name} (${demoUser.uid}) 🎓`);
       return;
     }
 
@@ -144,7 +143,7 @@ export default function App() {
         semester: "Semester 3",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
         subjects: ["Maths", "C Programming", "Physics"],
-        points: 150,
+        points: 100,
         doubtsCount: 0,
         answersCount: 0
       };
@@ -157,7 +156,9 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
-    showNotification("You have been signed out. You can browse or register anytime.");
+    setCurrentTab('home');
+    setActiveDoubtId(null);
+    showNotification("You have been signed out.");
   };
 
   const handleOpenDoubt = (id) => {
@@ -167,12 +168,6 @@ export default function App() {
   };
 
   const handlePostDoubt = async (newDoubtData) => {
-    if (!user) {
-      setAuthModalConfig({ isOpen: true, mode: 'register' });
-      showNotification("Please sign in or register to post academic doubts.", "error");
-      return;
-    }
-
     const newDoubt = {
       id: `dbt-${Date.now()}`,
       title: newDoubtData.title,
@@ -218,12 +213,6 @@ export default function App() {
   };
 
   const handleAddAnswer = async (doubtId, answerText) => {
-    if (!user) {
-      setAuthModalConfig({ isOpen: true, mode: 'register' });
-      showNotification("Please sign in or register to post an answer.", "error");
-      return;
-    }
-
     const newAnswer = {
       id: `ans-${Date.now()}`,
       authorName: user.name,
@@ -299,12 +288,6 @@ export default function App() {
   };
 
   const handleToggleJoinGroup = (groupId) => {
-    if (!user) {
-      setAuthModalConfig({ isOpen: true, mode: 'register' });
-      showNotification("Please register or log in to join student study groups.", "error");
-      return;
-    }
-
     setGroups(prev => prev.map(g => {
       if (g.id === groupId) {
         const nextStatus = !g.isJoined;
@@ -357,20 +340,35 @@ export default function App() {
     setShowRatingModal(null);
   };
 
-  // Safe fallback user for displaying the dashboard if user logged out
-  const displayUser = user || {
-    name: "Guest Student",
-    uid: "GUEST",
-    college: "Visitor Campus",
-    course: "General Studies",
-    semester: "Semester 1",
-    subjects: ["Maths", "C Programming", "Physics"],
-    points: 0,
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
-  };
+  // --- MANDATORY LOGIN GATE ---
+  // If no user is logged in, show Login / Register screen directly!
+  if (!user) {
+    return (
+      <>
+        {toast && (
+          <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 transition-all">
+            <div className="bg-navy-900 text-cream-50 px-4 py-3.5 rounded-xl shadow-elevated border border-teal-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-ping"></span>
+                <p className="text-sm font-medium text-cream-100">{toast.message}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="text-navy-400 hover:text-white text-xs p-1">
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        <LoginScreen 
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+        />
+      </>
+    );
+  }
 
+  // Once authenticated, render full platform:
   return (
-    <div className="flex flex-col min-h-screen bg-cream-50 text-navy-900 selection:bg-teal-100 selection:text-teal-900">
+    <div className="flex flex-col min-h-screen bg-cream-50 text-navy-900 selection:bg-teal-100 selection:text-teal-900 animate-fadeIn">
       
       {/* Toast Alert */}
       {toast && (
@@ -403,37 +401,9 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
-        
-        {/* Banner if user is browsing as guest */}
-        {!user && (
-          <div className="mb-6 bg-gradient-to-r from-teal-900 to-navy-900 text-cream-50 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-teal-500/30 shadow-card">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🎓</span>
-              <div>
-                <p className="text-xs sm:text-sm font-extrabold text-white">Join your university peers on PeerLearn!</p>
-                <p className="text-xs text-cream-300">Register to post doubts, access verified course notes, and earn peer credits.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setAuthModalConfig({ isOpen: true, mode: 'login' })}
-                className="text-xs font-bold text-cream-200 hover:text-white px-3 py-1.5 rounded-xl bg-navy-800 border border-navy-700"
-              >
-                Sign In
-              </button>
-              <button 
-                onClick={() => setAuthModalConfig({ isOpen: true, mode: 'register' })}
-                className="text-xs font-bold text-white px-4 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 shadow"
-              >
-                Register Now (+100 pts)
-              </button>
-            </div>
-          </div>
-        )}
-
         {currentTab === 'home' && !activeDoubtId && (
           <HomeDashboard 
-            user={displayUser}
+            user={user}
             doubts={doubts}
             notes={notes}
             groups={groups}
@@ -452,7 +422,7 @@ export default function App() {
           <AskDoubt 
             onSubmitDoubt={handlePostDoubt}
             onCancel={() => setCurrentTab('home')}
-            defaultSemester={displayUser.semester}
+            defaultSemester={user.semester}
           />
         )}
 
@@ -471,7 +441,7 @@ export default function App() {
               targetId: ans.id,
               targetName: ans.authorName
             })}
-            user={displayUser}
+            user={user}
           />
         )}
 
@@ -525,7 +495,7 @@ export default function App() {
         }}
       />
 
-      {/* Authentication Modal (Sign In & Register) */}
+      {/* Authentication Modal (when switching accounts or registering from menu) */}
       {authModalConfig && (
         <AuthModal 
           isOpen={authModalConfig.isOpen}
@@ -546,7 +516,7 @@ export default function App() {
       {/* Profile Modal */}
       {showProfileModal && (
         <ProfileModal 
-          user={displayUser}
+          user={user}
           onClose={() => setShowProfileModal(false)}
         />
       )}
