@@ -80,10 +80,10 @@ export default function DoubtBoard({
 
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-cream-200 text-xs text-navy-500">
             <div className="flex items-center gap-4">
-              <span>👁 {doubt.views} views</span>
-              <span>💬 {doubt.answers.length} answers</span>
+              <span>👁 {doubt.views || doubt.views_count || 1} views</span>
+              <span>💬 {(doubt.answers || []).length} answers</span>
             </div>
-            {doubt.bestAnswerFlag && (
+            {(doubt.bestAnswerFlag || doubt.best_answer_flag) && (
               <span className="text-orange-600 font-bold flex items-center gap-1">
                 <span>★</span> Best Answer Selected
               </span>
@@ -97,22 +97,22 @@ export default function DoubtBoard({
             <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
               <span>Peer Answers</span>
               <span className="text-xs bg-navy-800 text-cream-50 px-2 py-0.5 rounded-full font-mono">
-                {doubt.answers.length}
+                {(doubt.answers || []).length}
               </span>
             </h2>
             <span className="text-xs text-navy-500">Sorted by helpfulness</span>
           </div>
 
-          {doubt.answers.length === 0 ? (
+          {(!doubt.answers || doubt.answers.length === 0) ? (
             <div className="bg-cream-100 rounded-2xl p-8 border border-cream-200 text-center space-y-2">
               <span className="text-3xl">🌱</span>
               <h3 className="font-bold text-navy-900 text-sm">No answers yet!</h3>
               <p className="text-xs text-navy-500 max-w-sm mx-auto">
-                Be the first peer to help {doubt.authorName} solve this problem. Earn up to 25 peer reputation points!
+                Be the first peer to help {doubt.authorName || doubt.author_name} solve this problem. Earn up to 25 peer reputation points!
               </p>
             </div>
           ) : (
-            doubt.answers.map((ans) => (
+            (doubt.answers || []).map((ans) => (
               <div 
                 key={ans.id}
                 className={`rounded-2xl p-6 border transition shadow-soft ${
@@ -333,19 +333,19 @@ export default function DoubtBoard({
               </h3>
 
               <p className="text-xs sm:text-sm text-navy-600 line-clamp-2 mt-2 leading-relaxed">
-                {doubt.questionText}
+                {doubt.questionText || doubt.question_text}
               </p>
 
               <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-cream-200 text-xs text-navy-500">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-navy-800">{doubt.authorName}</span>
+                  <span className="font-semibold text-navy-800">{doubt.authorName || doubt.author_name}</span>
                   <span className="text-navy-400">•</span>
-                  <span className="font-mono text-[11px] text-navy-400">{doubt.authorUid}</span>
+                  <span className="font-mono text-[11px] text-navy-400">{doubt.authorUid || doubt.author_uid}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg">
-                    💬 {doubt.answers.length} {doubt.answers.length === 1 ? 'Answer' : 'Answers'}
+                    💬 {(doubt.answers || []).length} {(doubt.answers || []).length === 1 ? 'Answer' : 'Answers'}
                   </span>
                   <span className="font-bold text-orange-600 group-hover:translate-x-0.5 transition">
                     Join Discussion →

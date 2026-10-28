@@ -2,15 +2,27 @@ import React from 'react';
 
 export default function HomeDashboard({ 
   user, 
-  doubts, 
-  notes, 
-  groups, 
+  doubts = [], 
+  notes = [], 
+  groups = [], 
   onSelectTab, 
   onOpenDoubt, 
   onSelectSubject, 
   onPreviewNote, 
   onDownloadNote 
 }) {
+  const safeUser = user || {
+    name: "Student",
+    college: "University Campus",
+    course: "Engineering",
+    semester: "Semester 1",
+    subjects: ["Maths", "C Programming", "Physics"]
+  };
+
+  const safeSubjects = Array.isArray(safeUser.subjects) && safeUser.subjects.length > 0
+    ? safeUser.subjects
+    : ["Maths", "C Programming", "Data Structures", "Physics"];
+
   return (
     <div className="space-y-8 animate-fadeIn">
       
@@ -23,10 +35,10 @@ export default function HomeDashboard({
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-900/60 border border-teal-500/30 text-teal-300 text-xs font-semibold mb-3">
               <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-              {user.college} • {user.semester}
+              {safeUser.college} • {safeUser.semester}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-cream-50 tracking-tight">
-              Hey {user.name}! Ready to learn or share today?
+              Hey {safeUser.name}! Ready to learn or share today?
             </h1>
             <p className="text-sm sm:text-base text-cream-300 mt-2 font-normal leading-relaxed">
               Connect with course seniors, clear engineering doubts, access verified handwritten unit notes, or join upcoming exam study circles.
@@ -74,7 +86,7 @@ export default function HomeDashboard({
             </div>
             <div className="bg-navy-900/80 p-3.5 rounded-xl border border-navy-700 backdrop-blur-sm">
               <span className="text-orange-400 font-bold text-2xl tracking-tight">
-                {doubts.reduce((acc, d) => acc + d.answers.length, 0)}
+                {doubts.reduce((acc, d) => acc + (d.answers ? d.answers.length : 0), 0)}
               </span>
               <p className="text-xs text-cream-300 font-medium">Peer Answers</p>
             </div>
@@ -97,10 +109,10 @@ export default function HomeDashboard({
             <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
             <span>Browse by Your Subjects</span>
           </h2>
-          <span className="text-xs text-navy-500 font-medium">{user.course}</span>
+          <span className="text-xs text-navy-500 font-medium">{safeUser.course}</span>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {user.subjects.map((sub) => (
+          {safeSubjects.map((sub) => (
             <button
               key={sub}
               onClick={() => onSelectSubject(sub)}
@@ -137,58 +149,63 @@ export default function HomeDashboard({
           </div>
 
           <div className="space-y-3.5">
-            {doubts.slice(0, 3).map((doubt) => (
-              <div 
-                key={doubt.id}
-                onClick={() => onOpenDoubt(doubt.id)}
-                className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
-                      {doubt.subject}
-                    </span>
-                    <span className="text-xs text-navy-500 font-medium">
-                      {doubt.semester}
-                    </span>
-                    {doubt.bestAnswerFlag && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
-                        <span>★</span> Best Answer Found
+            {doubts.slice(0, 3).map((doubt) => {
+              const answersCount = Array.isArray(doubt.answers) ? doubt.answers.length : 0;
+              const hasBestAnswer = doubt.bestAnswerFlag || doubt.best_answer_flag;
+
+              return (
+                <div 
+                  key={doubt.id}
+                  onClick={() => onOpenDoubt(doubt.id)}
+                  className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
+                        {doubt.subject}
                       </span>
-                    )}
+                      <span className="text-xs text-navy-500 font-medium">
+                        {doubt.semester}
+                      </span>
+                      {hasBestAnswer && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
+                          <span>★</span> Best Answer Found
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-navy-400 flex-shrink-0">{doubt.createdAt || "Recent"}</span>
                   </div>
-                  <span className="text-xs text-navy-400 flex-shrink-0">{doubt.createdAt}</span>
+
+                  <h3 className="font-bold text-navy-900 text-base group-hover:text-teal-700 transition-colors leading-snug">
+                    {doubt.title}
+                  </h3>
+
+                  <p className="text-xs text-navy-600 line-clamp-2 mt-1.5 leading-relaxed font-normal">
+                    {doubt.questionText || doubt.question_text}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-cream-200 text-xs text-navy-500">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-navy-800">{doubt.authorName || doubt.author_name || "Student"}</span>
+                      <span className="text-navy-400">•</span>
+                      <span className="text-navy-400 font-mono text-[11px]">{doubt.authorUid || doubt.author_uid || "STD"}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1 text-teal-700 font-semibold">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                        {answersCount} {answersCount === 1 ? 'Answer' : 'Answers'}
+                      </span>
+                      <span className="text-orange-600 font-semibold group-hover:translate-x-0.5 transition-transform">
+                        Discuss & Answer →
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
-                <h3 className="font-bold text-navy-900 text-base group-hover:text-teal-700 transition-colors leading-snug">
-                  {doubt.title}
-                </h3>
-
-                <p className="text-xs text-navy-600 line-clamp-2 mt-1.5 leading-relaxed font-normal">
-                  {doubt.questionText}
-                </p>
-
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-cream-200 text-xs text-navy-500">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-navy-800">{doubt.authorName}</span>
-                    <span className="text-navy-400">•</span>
-                    <span className="text-navy-400 font-mono text-[11px]">{doubt.authorUid}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-teal-700 font-semibold">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                      </svg>
-                      {doubt.answers.length} {doubt.answers.length === 1 ? 'Answer' : 'Answers'}
-                    </span>
-                    <span className="text-orange-600 font-semibold group-hover:translate-x-0.5 transition-transform">
-                      Discuss & Answer →
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -213,53 +230,59 @@ export default function HomeDashboard({
           </div>
 
           <div className="space-y-3">
-            {notes.slice(0, 3).map((note) => (
-              <div 
-                key={note.id}
-                className="bg-cream-100 hover:bg-white rounded-2xl p-4 border border-cream-200 transition-all shadow-soft hover:shadow-card"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="px-2 py-0.5 bg-navy-800 text-cream-100 text-[11px] font-bold rounded-md">
-                        {note.subject}
-                      </span>
-                      <span className="text-[11px] text-navy-500 font-semibold">{note.semester}</span>
+            {notes.slice(0, 3).map((note) => {
+              const ratingValue = Number(note.rating || 4.9).toFixed(1);
+              const downloadsCount = note.downloads || note.downloads_count || 0;
+              const uploader = note.uploaderName || note.uploader_name || "Peer Contributor";
+
+              return (
+                <div 
+                  key={note.id}
+                  className="bg-cream-100 hover:bg-white rounded-2xl p-4 border border-cream-200 transition-all shadow-soft hover:shadow-card"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="px-2 py-0.5 bg-navy-800 text-cream-100 text-[11px] font-bold rounded-md">
+                          {note.subject}
+                        </span>
+                        <span className="text-[11px] text-navy-500 font-semibold">{note.semester}</span>
+                      </div>
+                      <h4 className="font-bold text-navy-900 text-sm leading-snug">{note.title}</h4>
                     </div>
-                    <h4 className="font-bold text-navy-900 text-sm leading-snug">{note.title}</h4>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-orange-500 font-bold text-xs">★ {ratingValue}</span>
+                      <span className="text-[10px] text-navy-400 block mt-0.5">{downloadsCount} downloads</span>
+                    </div>
                   </div>
 
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-orange-500 font-bold text-xs">★ {note.rating.toFixed(1)}</span>
-                    <span className="text-[10px] text-navy-400 block mt-0.5">{note.downloads} downloads</span>
+                  <p className="text-xs text-navy-600 line-clamp-2 mt-2 leading-relaxed">
+                    {note.description || "Course unit study notes and solved exam questions."}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-cream-200 text-xs">
+                    <span className="text-navy-500 text-[11px]">By <strong className="text-navy-800 font-semibold">{uploader}</strong></span>
+                    
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => onPreviewNote(note)}
+                        className="text-navy-600 hover:text-navy-900 text-xs font-semibold px-2 py-1 rounded-md bg-cream-200 hover:bg-cream-300 transition"
+                      >
+                        Preview
+                      </button>
+                      <button 
+                        onClick={() => onDownloadNote(note)}
+                        className="text-white text-xs font-bold px-3 py-1 rounded-md bg-teal-600 hover:bg-teal-700 transition flex items-center gap-1"
+                      >
+                        <span>PDF</span>
+                        <span>↓</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <p className="text-xs text-navy-600 line-clamp-2 mt-2 leading-relaxed">
-                  {note.description}
-                </p>
-
-                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-cream-200 text-xs">
-                  <span className="text-navy-500 text-[11px]">By <strong className="text-navy-800 font-semibold">{note.uploaderName}</strong></span>
-                  
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => onPreviewNote(note)}
-                      className="text-navy-600 hover:text-navy-900 text-xs font-semibold px-2 py-1 rounded-md bg-cream-200 hover:bg-cream-300 transition"
-                    >
-                      Preview
-                    </button>
-                    <button 
-                      onClick={() => onDownloadNote(note)}
-                      className="text-white text-xs font-bold px-3 py-1 rounded-md bg-teal-600 hover:bg-teal-700 transition flex items-center gap-1"
-                    >
-                      <span>PDF</span>
-                      <span>↓</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Study Groups CTA Card */}

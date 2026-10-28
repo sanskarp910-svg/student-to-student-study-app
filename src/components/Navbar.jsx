@@ -136,17 +136,17 @@ export default function Navbar({
                   title="Account menu"
                 >
                   <img 
-                    src={user.avatar} 
-                    alt={user.name} 
+                    src={user?.avatar || "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80"} 
+                    alt={user?.name || "Student"} 
                     className="w-8 h-8 rounded-lg object-cover ring-2 ring-teal-500/50"
                   />
                   <div className="text-left hidden lg:block">
-                    <p className="text-xs font-bold text-cream-50 leading-tight">{user.name}</p>
-                    <p className="text-[10px] text-teal-300 font-mono">{user.uid}</p>
+                    <p className="text-xs font-bold text-cream-50 leading-tight">{user?.name || "Student"}</p>
+                    <p className="text-[10px] text-teal-300 font-mono">{user?.uid || "STD-USER"}</p>
                   </div>
                   <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-orange-400 bg-orange-950/60 px-2 py-0.5 rounded-md border border-orange-800/40">
                     <span>★</span>
-                    <span>{user.points || 100} pts</span>
+                    <span>{user?.points || 100} pts</span>
                   </div>
                   <svg className="w-3.5 h-3.5 text-navy-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -157,9 +157,9 @@ export default function Navbar({
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-cream-100 rounded-2xl shadow-elevated border border-cream-300 py-2 z-50 animate-fadeIn text-navy-900">
                     <div className="px-4 py-2 border-b border-cream-200">
-                      <p className="text-xs font-extrabold text-navy-900">{user.name}</p>
-                      <p className="text-[11px] text-teal-700 font-mono">{user.uid}</p>
-                      <p className="text-[10px] text-navy-500 truncate">{user.college}</p>
+                      <p className="text-xs font-extrabold text-navy-900">{user?.name || "Student"}</p>
+                      <p className="text-[11px] text-teal-700 font-mono">{user?.uid || "STD-USER"}</p>
+                      <p className="text-[10px] text-navy-500 truncate">{user?.college || "University Campus"}</p>
                     </div>
 
                     <div className="py-1">

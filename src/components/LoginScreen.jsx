@@ -10,19 +10,17 @@ export default function LoginScreen({ onLogin, onRegister }) {
 
   // Register form state
   const [regName, setRegName] = useState('');
-  const [regUid, setRegUid] = useState(`STD-2025-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [regUid, setRegUid] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regCollege, setRegCollege] = useState('Apex Institute of Eng & Technology');
-  const [regCourse, setRegCourse] = useState('B.Tech Computer Science & Eng');
-  const [regSemester, setRegSemester] = useState('Semester 2');
-  const [regSubjects, setRegSubjects] = useState(['Maths', 'C Programming', 'Physics']);
+  const [regCollege, setRegCollege] = useState('');
+  const [regCourse, setRegCourse] = useState('');
+  const [regSemester, setRegSemester] = useState('Semester 1');
+  const [regSubjects, setRegSubjects] = useState([]);
 
   const handleToggleSubject = (sub) => {
     if (regSubjects.includes(sub)) {
-      if (regSubjects.length > 1) {
-        setRegSubjects(regSubjects.filter(s => s !== sub));
-      }
+      setRegSubjects(regSubjects.filter(s => s !== sub));
     } else {
       setRegSubjects([...regSubjects, sub]);
     }
@@ -38,16 +36,21 @@ export default function LoginScreen({ onLogin, onRegister }) {
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
+    const finalUid = regUid.trim() || `STD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const finalCollege = regCollege.trim() || 'University Student';
+    const finalCourse = regCourse.trim() || 'General Studies';
+    const finalSubjects = regSubjects.length > 0 ? regSubjects : ['General Studies'];
+
     onRegister({
       name: regName.trim(),
-      uid: regUid.trim(),
+      uid: finalUid,
       email: regEmail.trim(),
       password: regPassword,
-      college: regCollege.trim(),
-      course: regCourse.trim(),
+      college: finalCollege,
+      course: finalCourse,
       semester: regSemester,
-      subjects: regSubjects,
-      avatar: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 500)}?auto=format&fit=crop&w=200&q=80`,
+      subjects: finalSubjects,
+      avatar: `https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80`,
       points: 100,
       doubtsCount: 0,
       answersCount: 0

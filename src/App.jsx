@@ -26,6 +26,26 @@ import {
   PEER_TUTORS 
 } from './data/mockData';
 
+function normalizeProfile(rawProfile, fallbackUser) {
+  if (!rawProfile && !fallbackUser) return null;
+  const p = rawProfile || fallbackUser || {};
+  return {
+    id: p.id || "STD-USER",
+    name: p.name || p.user_metadata?.name || (p.email ? p.email.split('@')[0] : "Student"),
+    uid: p.uid || p.user_metadata?.uid || "STD-CLOUD",
+    college: p.college || p.user_metadata?.college || "University Campus",
+    course: p.course || p.user_metadata?.course || "Engineering",
+    semester: p.semester || p.user_metadata?.semester || "Semester 1",
+    subjects: Array.isArray(p.subjects) && p.subjects.length > 0 
+      ? p.subjects 
+      : ["Maths", "C Programming", "Data Structures"],
+    points: p.points || 100,
+    avatar: p.avatar || "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80",
+    doubtsCount: p.doubtsCount || 0,
+    answersCount: p.answersCount || 0
+  };
+}
+
 export default function App() {
   const [currentTab, setCurrentTab] = useState('home');
   const [activeDoubtId, setActiveDoubtId] = useState(null);
@@ -59,23 +79,13 @@ export default function App() {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            // Fetch student profile from Supabase Cloud
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
 
-            setUser(profile || {
-              id: session.user.id,
-              name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-              uid: session.user.user_metadata?.uid || "STD-CLOUD",
-              college: session.user.user_metadata?.college || "University Campus",
-              course: session.user.user_metadata?.course || "Engineering",
-              semester: session.user.user_metadata?.semester || "Semester 1",
-              subjects: session.user.user_metadata?.subjects || ["Maths", "C Programming"],
-              points: 100
-            });
+            setUser(normalizeProfile(profile, session.user));
           }
 
           // Fetch cloud doubts & notes
@@ -85,10 +95,49 @@ export default function App() {
           ]);
 
           if (cloudDoubtsData && cloudDoubtsData.length > 0) {
-            setDoubts(cloudDoubtsData);
+            const formattedDoubts = cloudDoubtsData.map(d => ({
+              id: d.id,
+              title: d.title,
+              questionText: d.question_text || d.questionText || '',
+              codeSnippet: d.code_snippet || d.codeSnippet || '',
+              subject: d.subject || 'General',
+              semester: d.semester || 'Semester 1',
+              authorName: d.author_name || d.authorName || 'Student',
+              authorUid: d.author_uid || d.authorUid || 'STD',
+              authorCollege: d.author_college || d.authorCollege || 'University',
+              createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Recent',
+              views: d.views_count || d.views || 1,
+              bestAnswerFlag: d.best_answer_flag || d.bestAnswerFlag || false,
+              answers: Array.isArray(d.answers) ? d.answers.map(a => ({
+                id: a.id,
+                authorName: a.author_name || 'Senior Peer',
+                authorUid: a.author_uid || 'STD',
+                authorCollege: 'Campus Senior',
+                authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+                answerText: a.answer_text || a.answerText || '',
+                createdAt: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'Recent',
+                upvotes: a.upvotes_count || 0,
+                isBestAnswer: a.is_best_answer || false,
+                ratings: []
+              })) : []
+            }));
+            setDoubts(formattedDoubts);
           }
+
           if (cloudNotesData && cloudNotesData.length > 0) {
-            setNotes(cloudNotesData);
+            const formattedNotes = cloudNotesData.map(n => ({
+              id: n.id,
+              title: n.title,
+              subject: n.subject || 'General',
+              semester: n.semester || 'Semester 1',
+              uploaderName: n.uploader_name || n.uploaderName || 'Peer Contributor',
+              downloads: n.downloads_count || n.downloads || 0,
+              rating: Number(n.rating || 5.0),
+              pages: n.pages || 24,
+              fileSize: n.file_size || '3.5 MB',
+              description: n.description || 'Comprehensive handwritten unit notes and solved questions.'
+            }));
+            setNotes(formattedNotes);
           }
         } catch (err) {
           console.warn("Cloud session fetch error:", err);
@@ -107,18 +156,9 @@ export default function App() {
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
-          setUser(profile || {
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-            uid: session.user.user_metadata?.uid || "STD-CLOUD",
-            college: session.user.user_metadata?.college || "University Campus",
-            course: session.user.user_metadata?.course || "Engineering",
-            semester: session.user.user_metadata?.semester || "Semester 1",
-            subjects: session.user.user_metadata?.subjects || ["Maths", "C Programming"],
-            points: 100
-          });
+          setUser(normalizeProfile(profile, session.user));
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
@@ -135,24 +175,23 @@ export default function App() {
     if (isSupabaseConfigured) {
       try {
         const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
-        setUser(result.profile || newUserData);
+        setUser(normalizeProfile(result.profile, newUserData));
         setAuthModalConfig(null);
         showNotification(`Account created in Supabase Cloud! Welcome, ${newUserData.name} ☁️`);
       } catch (err) {
         showNotification(err.message || "Cloud registration failed", "error");
       }
     } else {
-      // In-memory session until Supabase keys are plugged in
-      setUser(newUserData);
+      setUser(normalizeProfile(newUserData));
       setAuthModalConfig(null);
-      showNotification(`Welcome ${newUserData.name}! (Connect Supabase in Cloud Settings to sync to remote DB)`);
+      showNotification(`Welcome ${newUserData.name}!`);
     }
   };
 
   // 100% Cloud Login Handler
   const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
-      setUser(demoUser);
+      setUser(normalizeProfile(demoUser));
       setAuthModalConfig(null);
       showNotification(`Signed in as ${demoUser.name} (${demoUser.uid})`);
       return;
@@ -161,34 +200,17 @@ export default function App() {
     if (isSupabaseConfigured) {
       try {
         const result = await cloudAuth.signIn(email, password);
-        setUser(result.profile || {
-          name: result.user.user_metadata?.name || email.split('@')[0],
-          uid: result.user.user_metadata?.uid || "STD-CLOUD",
-          college: result.user.user_metadata?.college || "University Campus",
-          course: result.user.user_metadata?.course || "Engineering",
-          semester: result.user.user_metadata?.semester || "Semester 1",
-          subjects: ["Maths", "C Programming"],
-          points: 100
-        });
+        setUser(normalizeProfile(result.profile, result.user));
         setAuthModalConfig(null);
         showNotification(`Welcome back from Supabase Cloud! 🚀`);
       } catch (err) {
         showNotification(err.message || "Invalid cloud login credentials", "error");
       }
     } else {
-      // Direct in-memory login
-      setUser({
-        uid: email.startsWith('STD-') ? email : `STD-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        college: "Apex Institute of Eng & Technology",
-        course: "B.Tech Computer Science",
-        semester: "Semester 3",
-        avatar: "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80",
-        subjects: ["Maths", "C Programming", "Physics"],
-        points: 100,
-        doubtsCount: 0,
-        answersCount: 0
-      });
+      setUser(normalizeProfile({
+        name: email.split('@')[0],
+        email
+      }));
       setAuthModalConfig(null);
       showNotification(`Signed in!`);
     }

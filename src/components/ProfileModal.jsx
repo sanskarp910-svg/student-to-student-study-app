@@ -14,18 +14,18 @@ export default function ProfileModal({ user, onClose }) {
         </div>
 
         <div className="flex items-center gap-4 mb-4">
-          <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-teal-500" />
+          <img src={user.avatar || "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80"} alt={user.name || "Student"} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-teal-500" />
           <div>
-            <h4 className="font-extrabold text-navy-900 text-base">{user.name}</h4>
-            <p className="text-xs text-teal-700 font-mono font-bold">{user.uid}</p>
-            <p className="text-[11px] text-navy-500">{user.college}</p>
+            <h4 className="font-extrabold text-navy-900 text-base">{user.name || "Student"}</h4>
+            <p className="text-xs text-teal-700 font-mono font-bold">{user.uid || "STD-USER"}</p>
+            <p className="text-[11px] text-navy-500">{user.college || "University Campus"}</p>
           </div>
         </div>
 
         <div className="bg-cream-50 p-3.5 rounded-xl border border-cream-200 space-y-1.5 text-xs text-navy-700 mb-4">
-          <p><strong>Course:</strong> {user.course}</p>
-          <p><strong>Current Level:</strong> {user.semester}</p>
-          <p><strong>Enrolled Subjects:</strong> {user.subjects.join(", ")}</p>
+          <p><strong>Course:</strong> {user.course || "Engineering"}</p>
+          <p><strong>Current Level:</strong> {user.semester || "Semester 1"}</p>
+          <p><strong>Enrolled Subjects:</strong> {(user.subjects || []).join(", ") || "General Studies"}</p>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center mb-4">
