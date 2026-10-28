@@ -5,7 +5,41 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://frndebscouqiux
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZybmRlYnNjb3VxaXV4bm9xbmJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMTI4NjUsImV4cCI6MjEwODc4ODg2NX0.BKAIp6ET4QZWemrLCaeJCPWtOR7t-8QA38SV94dnrMI';
 
 export const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-export const isSupabaseConnected = isConfigured;
+export const isSupabaseConnected = () => isConfigured;
+
+export const getSupabaseCredentials = () => ({
+  url: supabaseUrl,
+  key: supabaseAnonKey
+});
+
+export const saveSupabaseConfig = (url, key) => {
+  return true;
+};
+
+export const clearSupabaseConfig = () => {
+  return true;
+};
+
+export const fetchDatabaseStats = async () => {
+  if (!supabase) return { profiles: 0, doubts: 0, answers: 0, notes: 0 };
+  try {
+    const [p, d, a, n] = await Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('doubts').select('id', { count: 'exact', head: true }),
+      supabase.from('answers').select('id', { count: 'exact', head: true }),
+      supabase.from('notes').select('id', { count: 'exact', head: true })
+    ]);
+    return {
+      profiles: p.count || 0,
+      doubts: d.count || 0,
+      answers: a.count || 0,
+      notes: n.count || 0
+    };
+  } catch (err) {
+    console.warn("fetchDatabaseStats:", err);
+    return { profiles: 0, doubts: 0, answers: 0, notes: 0 };
+  }
+};
 
 export const supabase = isConfigured 
   ? createClient(supabaseUrl, supabaseAnonKey) 

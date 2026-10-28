@@ -16,7 +16,7 @@ export default function SupabaseModal({ isOpen, onClose, onConnectedChange }) {
   const [copiedSql, setCopiedSql] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const connected = isSupabaseConnected();
+  const connected = typeof isSupabaseConnected === 'function' ? isSupabaseConnected() : Boolean(isSupabaseConnected);
 
   const loadStats = async () => {
     if (connected) {

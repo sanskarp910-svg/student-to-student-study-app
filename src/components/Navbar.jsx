@@ -15,7 +15,7 @@ export default function Navbar({
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const isConnected = isSupabaseConnected();
+  const isConnected = typeof isSupabaseConnected === 'function' ? isSupabaseConnected() : Boolean(isSupabaseConnected);
 
   // Close dropdown when clicked outside
   useEffect(() => {
