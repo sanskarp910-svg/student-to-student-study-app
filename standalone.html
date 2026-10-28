@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Student to Student Study App | Peer Learning Platform</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Configuration with custom Navy Blue, Cream, Teal, and Orange palette -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            // Navy Blue Palette
+            navy: {
+              50: '#F0F4F8',
+              100: '#D9E2EC',
+              200: '#BCCCDC',
+              300: '#9FB3C8',
+              400: '#829AB1',
+              500: '#627D98',
+              600: '#486581',
+              700: '#334E68',
+              800: '#1E293B',
+              900: '#0F172A',
+              950: '#0A0F1D',
+            },
+            // Cream Palette
+            cream: {
+              50: '#FDFBF7',
+              100: '#F8F5EE',
+              200: '#EFE9DC',
+              300: '#E5DDC9',
+              400: '#D4C6A9',
+              500: '#BCAB89',
+            },
+            // Teal Palette
+            teal: {
+              50: '#F0FDFA',
+              100: '#CCFBF1',
+              200: '#99F6E4',
+              300: '#5EEAD4',
+              400: '#2DD4BF',
+              500: '#14B8A6',
+              600: '#0D9488',
+              700: '#0F766E',
+              800: '#115E59',
+              900: '#134E4A',
+            },
+            // Orange Palette
+            orange: {
+              50: '#FFF7ED',
+              100: '#FFEDD5',
+              200: '#FED7AA',
+              300: '#FDBA74',
+              400: '#FB923C',
+              500: '#F97316',
+              600: '#EA580C',
+              700: '#C2410C',
+              800: '#9A3412',
+              900: '#7C2D12',
+            }
+          },
+          boxShadow: {
+            'soft': '0 2px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -2px rgba(15, 23, 42, 0.03)',
+            'card': '0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+            'elevated': '0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.06)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel Standalone for JSX compilation in-browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #FDFBF7;
+      color: #0F172A;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom scrollbar for clean UI */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F8F5EE;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 1rem);
+    }
+  </style>
+</head>
+<body class="bg-cream-50 text-navy-900 min-h-screen antialiased flex flex-col selection:bg-teal-100 selection:text-teal-900">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- MOCK DATA ---
+    const CURRENT_USER = {
+      uid: "STD-2024-8842",
+      name: "Aarav Sharma",
+      college: "Apex Institute of Eng & Technology",
+      course: "B.Tech Computer Science",
+      semester: "Semester 4",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      subjects: ["Maths", "C Programming", "Data Structures", "Operating Systems", "Physics", "Digital Electronics"],
+      doubtsCount: 4,
+      answersCount: 12,
+      points: 460
+    };
+
+    const SUBJECTS = [
+      "All Subjects",
+      "Maths",
+      "Physics",
+      "C Programming",
+      "Data Structures",
+      "Operating Systems",
+      "Digital Electronics",
+      "Chemistry"
+    ];
+
+    const SEMESTERS = [
+      "All Semesters",
+      "Semester 1",
+      "Semester 2",
+      "Semester 3",
+      "Semester 4",
+      "Semester 5",
+      "Semester 6",
+      "Semester 7",
+      "Semester 8"
+    ];
+
+    const INITIAL_DOUBTS = [
+      {
+        id: "dbt-1",
+        title: "How to fix segmentation fault in C when allocating dynamic 2D array?",
+        questionText: "I am trying to allocate a 2D matrix dynamically using malloc in C. When I loop to initialize arr[i][j], my code crashes with a Segmentation fault (core dumped) on row index 3. What am I missing with the double pointers (int**)?",
+        codeSnippet: "int **arr = (int**)malloc(rows * sizeof(int*));\nfor(int i = 0; i <= rows; i++) {\n    arr[i] = (int*)malloc(cols * sizeof(int));\n}",
+        subject: "C Programming",
+        semester: "Semester 2",
+        authorName: "Vikram Mehta",
+        authorUid: "STD-2024-3401",
+        authorCollege: "Apex Institute of Eng",
+        createdAt: "2 hours ago",
+        views: 94,
+        bestAnswerFlag: true,
+        answers: [
+          {
+            id: "ans-1",
+            authorName: "Dev Patel",
+            authorUid: "STD-2023-9941",
+            authorCollege: "Apex Institute (Senior Peer Tutor)",
+            authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+            answerText: "Look closely at your outer loop condition: `i <= rows`. In C, array indices are 0-indexed, so an array with `rows` elements has valid indices from `0` to `rows - 1`.\n\nChanging it to `for(int i = 0; i < rows; i++)` will prevent writing out of bounds into unallocated memory! Also remember to free each `arr[i]` before freeing `arr` when done.",
+            createdAt: "1 hour ago",
+            upvotes: 16,
+            isBestAnswer: true,
+            ratings: [
+              { score: 5, feedback: "Spot on! That index bug caught me off guard.", rater: "Vikram Mehta" }
+            ]
+          },
+          {
+            id: "ans-2",
+            authorName: "Priya Venkatesh",
+            authorUid: "STD-2023-1102",
+            authorCollege: "Apex Institute (Sem 6)",
+            authorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+            answerText: "Dev is 100% right about the `i < rows` bounds error. Also consider allocating a single contiguous block: `int *arr = malloc(rows * cols * sizeof(int))` and accessing elements as `arr[i * cols + j]`. It improves CPU cache locality and avoids double indirection overhead.",
+            createdAt: "45 mins ago",
+            upvotes: 8,
+            isBestAnswer: false,
+            ratings: []
+          }
+        ]
+      },
+      {
+        id: "dbt-2",
+        title: "Intuitive explanation of Eigenvalues and Eigenvectors in Engineering Maths?",
+        questionText: "We are currently doing Linear Algebra in Maths Unit 2. While I can calculate det(A - λI) = 0 algebraically, I cannot build intuition for what eigenvectors physically represent in 2D/3D transformations. Can someone explain with a real world analogy?",
+        codeSnippet: "",
+        subject: "Maths",
+        semester: "Semester 3",
+        authorName: "Neha Gupta",
+        authorUid: "STD-2024-9112",
+        authorCollege: "Apex Institute of Eng",
+        createdAt: "5 hours ago",
+        views: 156,
+        bestAnswerFlag: true,
+        answers: [
+          {
+            id: "ans-3",
+            authorName: "Rohan Kulkarni",
+            authorUid: "STD-2023-3391",
+            authorCollege: "Apex Institute (Math Tutor)",
+            authorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+            answerText: "Think of a matrix transformation as stretching, shearing, or rotating a sheet of rubber. Almost every vector drawn on that sheet rotates and changes direction.\n\nHowever, **Eigenvectors are the special directions that do NOT rotate**—they only get stretched or shrunk along their original line! The amount they stretch by is the **Eigenvalue (λ)**. If λ=2, that vector just doubles in length along the same axis.",
+            createdAt: "3 hours ago",
+            upvotes: 29,
+            isBestAnswer: true,
+            ratings: [
+              { score: 5, feedback: "The rubber sheet analogy clicked instantly!", rater: "Neha Gupta" }
+            ]
+          }
+        ]
+      },
+      {
+        id: "dbt-3",
+        title: "Difference between Gauss's Law in integral form vs differential form?",
+        questionText: "In Physics Electrodynamics, when do we prefer using the surface integral format ∮E·dA = Q/ε₀ versus the divergence format ∇·E = ρ/ε₀? Also, how do we transition between them using the Divergence Theorem?",
+        codeSnippet: "",
+        subject: "Physics",
+        semester: "Semester 2",
+        authorName: "Siddharth Rao",
+        authorUid: "STD-2024-7723",
+        authorCollege: "Apex Institute of Eng",
+        createdAt: "1 day ago",
+        views: 124,
+        bestAnswerFlag: false,
+        answers: [
+          {
+            id: "ans-4",
+            authorName: "Ananya Iyer",
+            authorUid: "STD-2024-5509",
+            authorCollege: "Apex Institute (Sem 4)",
+            authorAvatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80",
+            answerText: "Use Integral Form when you have high spatial symmetry (spherical, cylindrical, or planar) because the magnitude |E| can be factored out of the integral easily. Use Differential Form when solving boundary value problems with non-uniform charge density using Poisson's equation ∇²V = -ρ/ε₀.",
+            createdAt: "18 hours ago",
+            upvotes: 11,
+            isBestAnswer: false,
+            ratings: []
+          }
+        ]
+      },
+      {
+        id: "dbt-4",
+        title: "Why does QuickSort degrade to O(N²) when the array is already sorted?",
+        questionText: "If standard Lomuto partition picks the last element as the pivot, why does picking already-sorted elements result in quadratic time complexity? How does randomized pivot or median-of-three fix this?",
+        codeSnippet: "int partition(int arr[], int low, int high) {\n    int pivot = arr[high];\n    int i = (low - 1);\n    for (int j = low; j <= high - 1; j++) {\n        if (arr[j] < pivot) { i++; swap(&arr[i], &arr[j]); }\n    }\n    swap(&arr[i + 1], &arr[high]);\n    return (i + 1);\n}",
+        subject: "Data Structures",
+        semester: "Semester 3",
+        authorName: "Tanvi Saxena",
+        authorUid: "STD-2024-6014",
+        authorCollege: "Apex Institute of Eng",
+        createdAt: "2 days ago",
+        views: 182,
+        bestAnswerFlag: false,
+        answers: []
+      }
+    ];
+
+    const INITIAL_NOTES = [
+      {
+        id: "not-1",
+        title: "Maths Unit 1: Multivariable Calculus & Jacobians",
+        subject: "Maths",
+        semester: "Semester 1",
+        uploaderName: "Rohan Kulkarni",
+        uploaderUid: "STD-2023-3391",
+        fileLink: "#maths-unit1.pdf",
+        fileSize: "4.2 MB",
+        pages: 28,
+        downloads: 428,
+        rating: 4.9,
+        featured: true,
+        description: "Complete handwritten notes covering partial derivatives, Euler's theorem on homogeneous functions, Jacobians, and Taylor series with solved past paper questions."
+      },
+      {
+        id: "not-2",
+        title: "C Programming: Pointers, Memory & Structs Masterclass",
+        subject: "C Programming",
+        semester: "Semester 2",
+        uploaderName: "Dev Patel",
+        uploaderUid: "STD-2023-9941",
+        fileLink: "#c-programming-masterclass.pdf",
+        fileSize: "3.8 MB",
+        pages: 35,
+        downloads: 642,
+        rating: 5.0,
+        featured: true,
+        description: "In-depth guide with code listings, memory map diagrams, dynamic memory allocation (malloc, calloc, realloc), bitwise operations, and mock lab exam questions."
+      },
+      {
+        id: "not-3",
+        title: "Physics: Maxwell's Equations & Wave Optics Unit 3",
+        subject: "Physics",
+        semester: "Semester 2",
+        uploaderName: "Ananya Iyer",
+        uploaderUid: "STD-2024-5509",
+        fileLink: "#physics-unit3.pdf",
+        fileSize: "5.1 MB",
+        pages: 42,
+        downloads: 310,
+        rating: 4.8,
+        featured: false,
+        description: "Electrodynamics formulas summary, Poynting vector derivations, wave packet group velocity, and diffraction grating formula proofs."
+      },
+      {
+        id: "not-4",
+        title: "Data Structures: Trees, Graphs & Dynamic Programming",
+        subject: "Data Structures",
+        semester: "Semester 3",
+        uploaderName: "Aarav Sharma",
+        uploaderUid: "STD-2024-8842",
+        fileLink: "#dsa-unit4.pdf",
+        fileSize: "6.4 MB",
+        pages: 56,
+        downloads: 535,
+        rating: 4.9,
+        featured: true,
+        description: "AVL trees rotations, Dijkstra algorithm trace, Prim vs Kruskal, and 0/1 Knapsack code implementations with time complexity breakdown."
+      },
+      {
+        id: "not-5",
+        title: "Operating Systems: Process Scheduling & Deadlocks",
+        subject: "Operating Systems",
+        semester: "Semester 4",
+        uploaderName: "Priya Venkatesh",
+        uploaderUid: "STD-2023-1102",
+        fileLink: "#os-unit2.pdf",
+        fileSize: "3.1 MB",
+        pages: 24,
+        downloads: 395,
+        rating: 4.7,
+        featured: false,
+        description: "Round Robin, SJF, Bankers Algorithm numericals with step-by-step state matrix solutions and semaphore synchronization problems."
+      },
+      {
+        id: "not-6",
+        title: "Digital Electronics: K-Maps, Flip-Flops & Counters",
+        subject: "Digital Electronics",
+        semester: "Semester 3",
+        uploaderName: "Ananya Iyer",
+        uploaderUid: "STD-2024-5509",
+        fileLink: "#digital-electronics-unit2.pdf",
+        fileSize: "2.9 MB",
+        pages: 22,
+        downloads: 260,
+        rating: 4.6,
+        featured: false,
+        description: "Simplification of 4 & 5 variable Karnaugh maps, synchronous counter design state tables, and race-around condition prevention in JK flip flops."
+      }
+    ];
+
+    const INITIAL_GROUPS = [
+      {
+        id: "grp-1",
+        name: "C Programming & DSA Lab Squad",
+        subject: "C Programming",
+        semester: "Semester 2 & 3",
+        course: "Computer Science & IT",
+        membersCount: 42,
+        maxMembers: 60,
+        isJoined: true,
+        schedule: "Daily 7:30 PM • Discord Voice / Lab 2",
+        moderator: "Dev Patel",
+        description: "Daily peer coding sessions, debugging each other's segmentation faults, and reviewing lab practicals together.",
+        tags: ["Coding", "Lab Practical", "Live Debugging"]
+      },
+      {
+        id: "grp-2",
+        name: "Engineering Maths - Calculus Crushers",
+        subject: "Maths",
+        semester: "Semester 2 & 4",
+        course: "All Engineering Branches",
+        membersCount: 68,
+        maxMembers: 100,
+        isJoined: false,
+        schedule: "Tuesdays & Thursdays 6:00 PM • Library Hall B",
+        moderator: "Rohan Kulkarni",
+        description: "Conquering Differential Equations, Fourier series, and Complex Integration before the midterms. Past paper drill every weekend.",
+        tags: ["Maths Unit 1-4", "Past Papers", "Calculus"]
+      },
+      {
+        id: "grp-3",
+        name: "Physics & Circuit Theory Collective",
+        subject: "Physics",
+        semester: "Semester 2",
+        course: "ECE / EEE / Mechanical",
+        membersCount: 29,
+        maxMembers: 50,
+        isJoined: false,
+        schedule: "Mondays & Wednesdays 5:00 PM • Google Meet",
+        moderator: "Ananya Iyer",
+        description: "Focusing on Maxwell's equations, Optics derivations, and circuit network theorems. Group notes shared after each meeting.",
+        tags: ["Physics", "Circuits", "Derivations"]
+      },
+      {
+        id: "grp-4",
+        name: "OS Kernel & Concurrency Deep Dive",
+        subject: "Operating Systems",
+        semester: "Semester 4",
+        course: "Computer Science",
+        membersCount: 35,
+        maxMembers: 50,
+        isJoined: true,
+        schedule: "Saturdays 11:00 AM • Room 304 & Zoom",
+        moderator: "Priya Venkatesh",
+        description: "Understanding process concurrency, memory paging, file system internals, and solving previous year mid-term problem sets.",
+        tags: ["Operating Systems", "Mid-term Prep", "Concurrency"]
+      }
+    ];
+
+    const INITIAL_TUTORS = [
+      {
+        id: "STD-2023-9941",
+        name: "Dev Patel",
+        college: "Apex Institute of Eng",
+        course: "B.Tech Computer Science (Final Year)",
+        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+        rating: 5.0,
+        reviewsCount: 56,
+        subjects: ["C Programming", "Data Structures", "Algorithms"],
+        rate: "Free (Peer Credit)",
+        availability: "Weekends & Evenings",
+        badge: "Top Contributor",
+        bio: "Senior placed at top tech tier. Mentored 80+ juniors in pointers, dynamic memory, trees, and lab viva preparation."
+      },
+      {
+        id: "STD-2023-3391",
+        name: "Rohan Kulkarni",
+        college: "Apex Institute of Eng",
+        course: "B.Tech Mech & Applied Mathematics",
+        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+        rating: 4.8,
+        reviewsCount: 42,
+        subjects: ["Maths", "Physics", "Linear Algebra"],
+        rate: "Free (Peer Credit)",
+        availability: "Mon, Wed, Fri 6-8 PM",
+        badge: "Math Specialist",
+        bio: "Passionate about making calculus, Fourier transforms, and Laplace integrals intuitive without rote memorization."
+      },
+      {
+        id: "STD-2023-1102",
+        name: "Priya Venkatesh",
+        college: "Apex Institute of Eng",
+        course: "B.Tech Information Technology",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
+        rating: 4.9,
+        reviewsCount: 38,
+        subjects: ["Operating Systems", "Data Structures", "C Programming"],
+        rate: "Free (Peer Credit)",
+        availability: "Flexible After 5 PM",
+        badge: "Senior Peer Mentor",
+        bio: "Dean's list student. Helped over 40 peers ace their OS concepts, deadlock numericals, and SQL schema design."
+      },
+      {
+        id: "STD-2024-5509",
+        name: "Ananya Iyer",
+        college: "Apex Institute of Eng",
+        course: "B.Tech Electronics & Comm",
+        avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80",
+        rating: 4.7,
+        reviewsCount: 24,
+        subjects: ["Digital Electronics", "Physics", "Maths"],
+        rate: "Free (Peer Credit)",
+        availability: "Tue & Thu 4-7 PM",
+        badge: "Hardware & Physics",
+        bio: "ECE sophomore with expertise in logic minimization, K-maps, timing diagrams, and electromagnetic theory."
+      }
+    ];
+
+    // Helper: Star Rating Display
+    function StarRatingDisplay({ rating, count, size = "sm" }) {
+      const fullStars = Math.floor(rating);
+      const hasHalf = rating % 1 >= 0.4;
+      const starSize = size === "lg" ? "w-5 h-5" : size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
+
+      return (
+        <div className="flex items-center gap-1">
+          <div className="flex items-center text-orange-500">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <svg 
+                key={star} 
+                className={`${starSize} ${star <= fullStars ? 'fill-current text-orange-500' : (star === fullStars + 1 && hasHalf ? 'fill-orange-200 text-orange-500' : 'text-cream-300 fill-cream-200')}`} 
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            ))}
+          </div>
+          <span className="font-semibold text-xs text-navy-800 ml-0.5">{rating.toFixed(1)}</span>
+          {count !== undefined && (
+            <span className="text-navy-500 text-xs">({count})</span>
+          )}
+        </div>
+      );
+    }
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      // Current active screen: 'home' | 'ask' | 'notes' | 'doubts' | 'groups' | 'tutors'
+      const [currentTab, setCurrentTab] = useState('home');
+      const [activeDoubtId, setActiveDoubtId] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('All Subjects');
+      const [selectedSemesterFilter, setSelectedSemesterFilter] = useState('All Semesters');
+
+      // State stores
+      const [doubts, setDoubts] = useState(INITIAL_DOUBTS);
+      const [notes, setNotes] = useState(INITIAL_NOTES);
+      const [groups, setGroups] = useState(INITIAL_GROUPS);
+      const [tutors, setTutors] = useState(INITIAL_TUTORS);
+      const [user, setUser] = useState(CURRENT_USER);
+
+      // Toast notification state
+      const [toast, setToast] = useState(null);
+
+      // Modals
+      const [showRatingModal, setShowRatingModal] = useState(null); // { targetType: 'answer' | 'tutor', targetId, targetName }
+      const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+      const [showUploadNoteModal, setShowUploadNoteModal] = useState(false);
+      const [showProfileModal, setShowProfileModal] = useState(false);
+      const [previewNote, setPreviewNote] = useState(null);
+
+      const showNotification = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3800);
+      };
+
+      // Handler: Navigate to doubt detail
+      const handleOpenDoubt = (id) => {
+        setActiveDoubtId(id);
+        setCurrentTab('doubts');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // Handler: Post new doubt
+      const handlePostDoubt = (newDoubtData) => {
+        const newDoubt = {
+          id: `dbt-${Date.now()}`,
+          title: newDoubtData.title,
+          questionText: newDoubtData.questionText,
+          codeSnippet: newDoubtData.codeSnippet || '',
+          subject: newDoubtData.subject,
+          semester: newDoubtData.semester || 'Semester 4',
+          authorName: user.name,
+          authorUid: user.uid,
+          authorCollege: user.college,
+          createdAt: "Just now",
+          views: 1,
+          bestAnswerFlag: false,
+          answers: []
+        };
+
+        setDoubts([newDoubt, ...doubts]);
+        setUser({ ...user, doubtsCount: user.doubtsCount + 1, points: user.points + 10 });
+        showNotification("Your doubt has been posted to the campus community! 🎉");
+        setActiveDoubtId(newDoubt.id);
+        setCurrentTab('doubts');
+      };
+
+      // Handler: Add reply to doubt
+      const handleAddAnswer = (doubtId, answerText) => {
+        if (!answerText.trim()) return;
+
+        const newAnswer = {
+          id: `ans-${Date.now()}`,
+          authorName: user.name,
+          authorUid: user.uid,
+          authorCollege: `${user.college} (${user.semester})`,
+          authorAvatar: user.avatar,
+          answerText: answerText.trim(),
+          createdAt: "Just now",
+          upvotes: 0,
+          isBestAnswer: false,
+          ratings: []
+        };
+
+        setDoubts(prev => prev.map(d => {
+          if (d.id === doubtId) {
+            return {
+              ...d,
+              answers: [...d.answers, newAnswer]
+            };
+          }
+          return d;
+        }));
+
+        setUser({ ...user, answersCount: user.answersCount + 1, points: user.points + 25 });
+        showNotification("Answer posted! You earned +25 peer contribution points 🚀");
+      };
+
+      // Handler: Upvote answer
+      const handleUpvoteAnswer = (doubtId, answerId) => {
+        setDoubts(prev => prev.map(d => {
+          if (d.id === doubtId) {
+            return {
+              ...d,
+              answers: d.answers.map(a => a.id === answerId ? { ...a, upvotes: a.upvotes + 1 } : a)
+            };
+          }
+          return d;
+        }));
+        showNotification("Upvoted! Thank you for encouraging quality answers.");
+      };
+
+      // Handler: Mark Best Answer
+      const handleMarkBestAnswer = (doubtId, answerId) => {
+        setDoubts(prev => prev.map(d => {
+          if (d.id === doubtId) {
+            return {
+              ...d,
+              bestAnswerFlag: true,
+              answers: d.answers.map(a => ({
+                ...a,
+                isBestAnswer: a.id === answerId
+              }))
+            };
+          }
+          return d;
+        }));
+        showNotification("Marked as Best Answer! ⭐ Verified badge awarded.");
+      };
+
+      // Handler: Toggle Group Join
+      const handleToggleJoinGroup = (groupId) => {
+        setGroups(prev => prev.map(g => {
+          if (g.id === groupId) {
+            const nextStatus = !g.isJoined;
+            return {
+              ...g,
+              isJoined: nextStatus,
+              membersCount: nextStatus ? g.membersCount + 1 : g.membersCount - 1
+            };
+          }
+          return g;
+        }));
+      };
+
+      // Handler: Create Study Group
+      const handleCreateGroup = (groupData) => {
+        const newGroup = {
+          id: `grp-${Date.now()}`,
+          name: groupData.name,
+          subject: groupData.subject,
+          semester: groupData.semester,
+          course: groupData.course || "General B.Tech",
+          membersCount: 1,
+          maxMembers: parseInt(groupData.maxMembers) || 50,
+          isJoined: true,
+          schedule: groupData.schedule || "Weekly Online • Schedule TBD",
+          moderator: user.name,
+          description: groupData.description,
+          tags: [groupData.subject, "Peer Study", groupData.semester]
+        };
+        setGroups([newGroup, ...groups]);
+        setShowCreateGroupModal(false);
+        showNotification(`Study Group "${groupData.name}" created successfully!`);
+      };
+
+      // Handler: Upload Note
+      const handleUploadNote = (noteData) => {
+        const newNote = {
+          id: `not-${Date.now()}`,
+          title: noteData.title,
+          subject: noteData.subject,
+          semester: noteData.semester,
+          uploaderName: user.name,
+          uploaderUid: user.uid,
+          fileLink: `#${noteData.title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+          fileSize: "3.2 MB",
+          pages: 18,
+          downloads: 1,
+          rating: 5.0,
+          featured: false,
+          description: noteData.description || "Uploaded notes for peer revision."
+        };
+        setNotes([newNote, ...notes]);
+        setShowUploadNoteModal(false);
+        showNotification(`Notes "${noteData.title}" shared with students! +20 points earned.`);
+      };
+
+      // Handler: Submit Rating
+      const handleSubmitRating = (ratingScore, feedbackText) => {
+        if (!showRatingModal) return;
+
+        if (showRatingModal.targetType === 'answer') {
+          // add rating to answer
+          setDoubts(prev => prev.map(d => {
+            if (d.id === showRatingModal.doubtId) {
+              return {
+                ...d,
+                answers: d.answers.map(a => {
+                  if (a.id === showRatingModal.targetId) {
+                    const newRating = {
+                      score: ratingScore,
+                      feedback: feedbackText || "Helpful explanation!",
+                      rater: user.name
+                    };
+                    return {
+                      ...a,
+                      ratings: [...(a.ratings || []), newRating]
+                    };
+                  }
+                  return a;
+                })
+              };
+            }
+            return d;
+          }));
+          showNotification(`Thank you! You rated this answer ${ratingScore} Stars. ⭐`);
+        } else if (showRatingModal.targetType === 'tutor') {
+          setTutors(prev => prev.map(t => {
+            if (t.id === showRatingModal.targetId) {
+              const newCount = t.reviewsCount + 1;
+              const newRating = Number(((t.rating * t.reviewsCount + ratingScore) / newCount).toFixed(1));
+              return {
+                ...t,
+                rating: newRating,
+                reviewsCount: newCount
+              };
+            }
+            return t;
+          }));
+          showNotification(`Feedback recorded for ${showRatingModal.targetName}!`);
+        }
+
+        setShowRatingModal(null);
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* TOAST ALERT */}
+          {toast && (
+            <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 transition-all transform animate-bounce">
+              <div className="bg-navy-900 text-cream-50 px-4 py-3.5 rounded-xl shadow-elevated border border-teal-500/30 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-ping"></span>
+                  <p className="text-sm font-medium text-cream-100">{toast.message}</p>
+                </div>
+                <button onClick={() => setToast(null)} className="text-navy-400 hover:text-white text-xs p-1">
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TOP APP BAR / DESKTOP HEADER */}
+          <header className="sticky top-0 z-40 bg-navy-900 text-cream-50 border-b border-navy-800 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                
+                {/* Brand Logo & Name */}
+                <div 
+                  onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+                  className="flex items-center gap-3 cursor-pointer select-none group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-900/30 group-hover:scale-105 transition-transform">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-extrabold text-lg sm:text-xl tracking-tight text-cream-50">Student<span className="text-teal-400">2</span>Student</span>
+                      <span className="text-[10px] bg-orange-500 text-white font-bold px-1.5 py-0.5 rounded-full tracking-wider uppercase">Peer</span>
+                    </div>
+                    <p className="text-[11px] text-navy-300 hidden sm:block font-medium">University Peer Learning & Study Exchange</p>
+                  </div>
+                </div>
+
+                {/* Desktop Navigation Links */}
+                <nav className="hidden md:flex items-center gap-1">
+                  <button 
+                    onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'home' && !activeDoubtId ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                    }`}
+                  >
+                    <span>Dashboard</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentTab('ask'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'ask' ? 'bg-orange-600 text-white shadow-md' : 'text-orange-400 hover:bg-orange-600/20'
+                    }`}
+                  >
+                    <span className="text-base font-bold leading-none">+</span>
+                    <span>Ask a Doubt</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentTab('doubts'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'doubts' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                    }`}
+                  >
+                    <span>Doubt Board</span>
+                    <span className="text-xs bg-navy-700 text-cream-200 px-1.5 py-0.5 rounded-full">{doubts.length}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentTab('notes'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'notes' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                    }`}
+                  >
+                    <span>Notes Library</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentTab('groups'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'groups' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                    }`}
+                  >
+                    <span>Study Groups</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setCurrentTab('tutors'); setActiveDoubtId(null); }}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+                      currentTab === 'tutors' ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
+                    }`}
+                  >
+                    <span>Peer Tutors</span>
+                  </button>
+                </nav>
+
+                {/* User Profile Pill & Quick Actions */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex items-center gap-2.5 bg-navy-800/90 hover:bg-navy-700/80 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-navy-700 transition"
+                  >
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name} 
+                      className="w-8 h-8 rounded-lg object-cover ring-2 ring-teal-500/50"
+                    />
+                    <div className="text-left hidden lg:block">
+                      <p className="text-xs font-bold text-cream-50 leading-tight">{user.name}</p>
+                      <p className="text-[10px] text-teal-300 font-mono">{user.uid}</p>
+                    </div>
+                    <div className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-orange-400 bg-orange-950/60 px-2 py-0.5 rounded-md border border-orange-800/40">
+                      <span>★</span>
+                      <span>{user.points} pts</span>
+                    </div>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN VIEW CONTENT AREA */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
+            
+            {/* VIEW: HOME DASHBOARD */}
+            {currentTab === 'home' && !activeDoubtId && (
+              <div className="space-y-8 animate-fadeIn">
+                
+                {/* Hero Welcome Banner */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-950 text-cream-50 p-6 sm:p-8 shadow-card border border-navy-700">
+                  <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                  <div className="absolute bottom-0 right-20 -mb-10 w-48 h-48 bg-orange-500/15 rounded-full blur-2xl pointer-events-none"></div>
+
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="max-w-2xl">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-900/60 border border-teal-500/30 text-teal-300 text-xs font-semibold mb-3">
+                        <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                        {user.college} • {user.semester}
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold text-cream-50 tracking-tight">
+                        Hey {user.name}! Ready to learn or share today?
+                      </h1>
+                      <p className="text-sm sm:text-base text-cream-300 mt-2 font-normal leading-relaxed">
+                        Connect with course seniors, clear engineering doubts, access verified handwritten unit notes, or join upcoming exam study circles.
+                      </p>
+
+                      {/* Quick Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-3 mt-5">
+                        <button 
+                          onClick={() => setCurrentTab('ask')}
+                          className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-orange-600/30 transition-all flex items-center gap-2 hover:-translate-y-0.5"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/>
+                          </svg>
+                          <span>Ask a Doubt</span>
+                        </button>
+
+                        <button 
+                          onClick={() => setCurrentTab('notes')}
+                          className="bg-cream-100 hover:bg-white text-navy-900 font-bold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:-translate-y-0.5"
+                        >
+                          <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                          </svg>
+                          <span>Notes Library</span>
+                        </button>
+
+                        <button 
+                          onClick={() => setCurrentTab('groups')}
+                          className="bg-navy-800/80 hover:bg-navy-700 text-cream-100 font-semibold text-sm px-4 py-2.5 rounded-xl border border-navy-600 transition-all flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                          </svg>
+                          <span>Study Groups</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3 min-w-[240px]">
+                      <div className="bg-navy-900/80 p-3.5 rounded-xl border border-navy-700 backdrop-blur-sm">
+                        <span className="text-teal-400 font-bold text-2xl tracking-tight">{doubts.length}</span>
+                        <p className="text-xs text-cream-300 font-medium">Active Doubts</p>
+                      </div>
+                      <div className="bg-navy-900/80 p-3.5 rounded-xl border border-navy-700 backdrop-blur-sm">
+                        <span className="text-orange-400 font-bold text-2xl tracking-tight">
+                          {doubts.reduce((acc, d) => acc + d.answers.length, 0)}
+                        </span>
+                        <p className="text-xs text-cream-300 font-medium">Peer Answers</p>
+                      </div>
+                      <div className="bg-navy-900/80 p-3.5 rounded-xl border border-navy-700 backdrop-blur-sm">
+                        <span className="text-teal-300 font-bold text-2xl tracking-tight">{notes.length}</span>
+                        <p className="text-xs text-cream-300 font-medium">Verified Notes</p>
+                      </div>
+                      <div className="bg-navy-900/80 p-3.5 rounded-xl border border-navy-700 backdrop-blur-sm">
+                        <span className="text-orange-300 font-bold text-2xl tracking-tight">{groups.length}</span>
+                        <p className="text-xs text-cream-300 font-medium">Study Circles</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Popular Course Subject Chips */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-navy-900 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                      <span>Browse by Your Subjects</span>
+                    </h2>
+                    <span className="text-xs text-navy-500 font-medium">{user.course}</span>
+                  </div>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                    {user.subjects.map((sub) => (
+                      <button
+                        key={sub}
+                        onClick={() => {
+                          setSelectedSubjectFilter(sub);
+                          setCurrentTab('doubts');
+                        }}
+                        className="flex-shrink-0 bg-cream-100 hover:bg-teal-50 hover:border-teal-400 text-navy-800 text-xs font-semibold px-3.5 py-2 rounded-xl border border-cream-200 transition-all flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
+                        <span>{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Two-Column Dashboard Feed: Recent Doubts & Popular Notes */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  
+                  {/* Left Column: Recent Doubts Feed (7 Cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                        </div>
+                        <h2 className="text-lg font-bold text-navy-900 tracking-tight">Recent Doubts Feed</h2>
+                      </div>
+                      <button 
+                        onClick={() => { setCurrentTab('doubts'); setActiveDoubtId(null); }}
+                        className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
+                      >
+                        <span>View All ({doubts.length})</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      {doubts.slice(0, 3).map((doubt) => (
+                        <div 
+                          key={doubt.id}
+                          onClick={() => handleOpenDoubt(doubt.id)}
+                          className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
+                                {doubt.subject}
+                              </span>
+                              <span className="text-xs text-navy-500 font-medium">
+                                {doubt.semester}
+                              </span>
+                              {doubt.bestAnswerFlag && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
+                                  <span>★</span> Best Answer Found
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-navy-400 flex-shrink-0">{doubt.createdAt}</span>
+                          </div>
+
+                          <h3 className="font-bold text-navy-900 text-base group-hover:text-teal-700 transition-colors leading-snug">
+                            {doubt.title}
+                          </h3>
+
+                          <p className="text-xs text-navy-600 line-clamp-2 mt-1.5 leading-relaxed font-normal">
+                            {doubt.questionText}
+                          </p>
+
+                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-cream-200 text-xs text-navy-500">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-navy-800">{doubt.authorName}</span>
+                              <span className="text-navy-400">•</span>
+                              <span className="text-navy-400 font-mono text-[11px]">{doubt.authorUid}</span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center gap-1 text-teal-700 font-semibold">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                {doubt.answers.length} {doubt.answers.length === 1 ? 'Answer' : 'Answers'}
+                              </span>
+                              <span className="text-orange-600 font-semibold group-hover:translate-x-0.5 transition-transform">
+                                Discuss & Answer →
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Popular Notes Repository Spotlight (5 Cols) */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-teal-100 text-teal-700 rounded-lg">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                          </svg>
+                        </div>
+                        <h2 className="text-lg font-bold text-navy-900 tracking-tight">Popular Notes</h2>
+                      </div>
+                      <button 
+                        onClick={() => setCurrentTab('notes')}
+                        className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
+                      >
+                        <span>All Notes ({notes.length})</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {notes.slice(0, 3).map((note) => (
+                        <div 
+                          key={note.id}
+                          className="bg-cream-100 hover:bg-white rounded-2xl p-4 border border-cream-200 transition-all shadow-soft hover:shadow-card"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="px-2 py-0.5 bg-navy-800 text-cream-100 text-[11px] font-bold rounded-md">
+                                  {note.subject}
+                                </span>
+                                <span className="text-[11px] text-navy-500 font-semibold">{note.semester}</span>
+                              </div>
+                              <h4 className="font-bold text-navy-900 text-sm leading-snug">{note.title}</h4>
+                            </div>
+
+                            <div className="text-right flex-shrink-0">
+                              <StarRatingDisplay rating={note.rating} />
+                              <span className="text-[10px] text-navy-400 block mt-0.5">{note.downloads} downloads</span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-navy-600 line-clamp-2 mt-2 leading-relaxed">
+                            {note.description}
+                          </p>
+
+                          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-cream-200 text-xs">
+                            <span className="text-navy-500 text-[11px]">By <strong className="text-navy-800 font-semibold">{note.uploaderName}</strong></span>
+                            
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setPreviewNote(note)}
+                                className="text-navy-600 hover:text-navy-900 text-xs font-semibold px-2 py-1 rounded-md bg-cream-200 hover:bg-cream-300 transition"
+                              >
+                                Preview
+                              </button>
+                              <button 
+                                onClick={() => showNotification(`Downloading ${note.title}...`)}
+                                className="text-white text-xs font-bold px-3 py-1 rounded-md bg-teal-600 hover:bg-teal-700 transition flex items-center gap-1"
+                              >
+                                <span>PDF</span>
+                                <span>↓</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Study Groups CTA Card */}
+                    <div className="bg-gradient-to-br from-teal-700 to-navy-900 text-cream-50 p-5 rounded-2xl shadow-card border border-teal-600/40">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2.5 py-0.5 bg-orange-500 text-white font-bold text-[10px] uppercase rounded-full">
+                          Collaborate
+                        </span>
+                        <span className="text-xs text-teal-200 font-medium">Exam Prep Circles</span>
+                      </div>
+                      <h4 className="font-extrabold text-base text-cream-50 leading-tight">
+                        Need a study buddy for semester finals?
+                      </h4>
+                      <p className="text-xs text-cream-200 mt-1.5 leading-relaxed">
+                        Join open peer study rooms for Calculus, C Programming, or OS Kernel problem solving.
+                      </p>
+                      <button 
+                        onClick={() => setCurrentTab('groups')}
+                        className="mt-3.5 w-full bg-cream-50 text-navy-900 hover:bg-white font-bold text-xs py-2 rounded-xl transition shadow"
+                      >
+                        Explore Study Groups ({groups.length}) →
+                      </button>
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+            {/* VIEW: ASK A DOUBT PAGE */}
+            {currentTab === 'ask' && (
+              <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
+                
+                {/* Header */}
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-card">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="p-2 bg-white/20 rounded-xl">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Ask a Doubt</h1>
+                      <p className="text-xs sm:text-sm text-orange-100">Get fast, step-by-step help from seniors and batchmates across college</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Card */}
+                <div className="bg-cream-100 rounded-2xl p-6 sm:p-8 border border-cream-200 shadow-soft">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.target;
+                    const subject = form.subject.value;
+                    const semester = form.semester.value;
+                    const title = form.title.value.trim();
+                    const questionText = form.questionText.value.trim();
+                    const codeSnippet = form.codeSnippet ? form.codeSnippet.value.trim() : '';
+
+                    if (!title || !questionText) {
+                      showNotification("Please provide both a title and details of your doubt.", "error");
+                      return;
+                    }
+
+                    handlePostDoubt({
+                      subject,
+                      semester,
+                      title,
+                      questionText,
+                      codeSnippet
+                    });
+                  }} className="space-y-6">
+
+                    {/* Subject & Semester Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-2">
+                          Subject <span className="text-orange-500">*</span>
+                        </label>
+                        <select 
+                          name="subject"
+                          defaultValue="Maths"
+                          required
+                          className="w-full bg-cream-50 border border-cream-300 rounded-xl px-4 py-3 text-sm font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition shadow-sm"
+                        >
+                          {SUBJECTS.filter(s => s !== "All Subjects").map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-2">
+                          Semester / Course Level <span className="text-orange-500">*</span>
+                        </label>
+                        <select 
+                          name="semester"
+                          defaultValue={user.semester}
+                          required
+                          className="w-full bg-cream-50 border border-cream-300 rounded-xl px-4 py-3 text-sm font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition shadow-sm"
+                        >
+                          {SEMESTERS.filter(s => s !== "All Semesters").map(sem => (
+                            <option key={sem} value={sem}>{sem}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <div>
+                      <label className="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-2">
+                        Question Summary / One-Liner <span className="text-orange-500">*</span>
+                      </label>
+                      <input 
+                        type="text"
+                        name="title"
+                        required
+                        placeholder="e.g. Why does my recursive QuickSort throw StackOverflowError on sorted arrays?"
+                        className="w-full bg-cream-50 border border-cream-300 rounded-xl px-4 py-3 text-sm text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition shadow-sm"
+                      />
+                    </div>
+
+                    {/* Detailed Question Textarea */}
+                    <div>
+                      <label className="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-2">
+                        Describe Your Doubt In Detail <span className="text-orange-500">*</span>
+                      </label>
+                      <textarea 
+                        name="questionText"
+                        rows="6"
+                        required
+                        placeholder="Explain what concept or problem you are struggling with. What have you tried so far? What output or error message are you seeing?"
+                        className="w-full bg-cream-50 border border-cream-300 rounded-xl p-4 text-sm text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition shadow-sm font-sans resize-y"
+                      ></textarea>
+                    </div>
+
+                    {/* Optional Code or Math snippet */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-navy-900 uppercase tracking-wider">
+                          Code Snippet or Mathematical Equation (Optional)
+                        </label>
+                        <span className="text-[11px] text-navy-500 font-mono">Monospace syntax</span>
+                      </div>
+                      <textarea 
+                        name="codeSnippet"
+                        rows="4"
+                        placeholder="// Paste relevant C code, formula, or logic here&#10;int main() { ... }"
+                        className="w-full bg-navy-950 border border-navy-800 rounded-xl p-4 text-xs font-mono text-teal-300 placeholder:text-navy-600 focus:outline-none focus:ring-2 focus:ring-teal-400 transition shadow-inner resize-y"
+                      ></textarea>
+                    </div>
+
+                    {/* Posting Guidelines Card */}
+                    <div className="bg-teal-50 border border-teal-200 p-4 rounded-xl flex items-start gap-3">
+                      <span className="text-teal-600 text-lg">💡</span>
+                      <div className="text-xs text-navy-700 space-y-1">
+                        <p className="font-bold text-teal-900">Tips for getting fast, accurate peer answers:</p>
+                        <p>• Mention your specific unit or chapter (e.g. Unit 2 Jacobians or Pointers).</p>
+                        <p>• When someone provides a helpful solution, remember to mark it as the <strong>Best Answer</strong> so they receive university peer credits!</p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button 
+                        type="button"
+                        onClick={() => setCurrentTab('home')}
+                        className="px-5 py-2.5 rounded-xl border border-cream-300 text-navy-700 hover:bg-cream-200 text-sm font-semibold transition"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all flex items-center gap-2 hover:-translate-y-0.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                        <span>Post Doubt Now</span>
+                      </button>
+                    </div>
+
+                  </form>
+                </div>
+
+              </div>
+            )}
+
+            {/* VIEW: DOUBT BOARD & DETAIL THREAD VIEW */}
+            {currentTab === 'doubts' && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* If a specific doubt is open, show full thread */}
+                {activeDoubtId ? (
+                  (() => {
+                    const doubt = doubts.find(d => d.id === activeDoubtId) || doubts[0];
+                    return (
+                      <div className="space-y-6 max-w-4xl mx-auto">
+                        
+                        {/* Back to Doubt Board button */}
+                        <div className="flex items-center justify-between">
+                          <button 
+                            onClick={() => setActiveDoubtId(null)}
+                            className="inline-flex items-center gap-2 text-xs font-bold text-navy-700 hover:text-navy-950 bg-cream-100 hover:bg-cream-200 px-3.5 py-2 rounded-xl border border-cream-200 transition"
+                          >
+                            <span>←</span>
+                            <span>Back to Doubt Board</span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
+                              {doubt.subject}
+                            </span>
+                            <span className="text-xs text-navy-500 font-medium">
+                              {doubt.semester}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Question Main Card */}
+                        <div className="bg-cream-100 rounded-2xl p-6 sm:p-8 border border-cream-200 shadow-soft">
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-navy-800 text-cream-50 font-bold flex items-center justify-center text-sm">
+                                {doubt.authorName.charAt(0)}
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-sm text-navy-900 leading-tight">{doubt.authorName}</h3>
+                                <p className="text-[11px] text-navy-500 font-mono">{doubt.authorUid} • {doubt.authorCollege}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs text-navy-400">{doubt.createdAt}</span>
+                          </div>
+
+                          <h1 className="text-xl sm:text-2xl font-extrabold text-navy-900 leading-snug mb-3">
+                            {doubt.title}
+                          </h1>
+
+                          <div className="text-sm text-navy-800 leading-relaxed whitespace-pre-line font-normal">
+                            {doubt.questionText}
+                          </div>
+
+                          {doubt.codeSnippet && (
+                            <div className="mt-4">
+                              <div className="bg-navy-900 text-cream-200 text-xs font-mono px-4 py-1.5 rounded-t-xl border-b border-navy-800 flex items-center justify-between">
+                                <span>Code / Formula Snippet</span>
+                                <span className="text-teal-400 text-[10px]">C / Monospace</span>
+                              </div>
+                              <pre className="bg-navy-950 text-teal-300 font-mono text-xs p-4 rounded-b-xl overflow-x-auto leading-relaxed border border-navy-800">
+                                <code>{doubt.codeSnippet}</code>
+                              </pre>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between mt-6 pt-4 border-t border-cream-200 text-xs text-navy-500">
+                            <div className="flex items-center gap-4">
+                              <span>👁 {doubt.views} views</span>
+                              <span>💬 {doubt.answers.length} answers</span>
+                            </div>
+                            {doubt.bestAnswerFlag && (
+                              <span className="text-orange-600 font-bold flex items-center gap-1">
+                                <span>★</span> Best Answer Selected
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Answers Section */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                              <span>Peer Answers</span>
+                              <span className="text-xs bg-navy-800 text-cream-50 px-2 py-0.5 rounded-full font-mono">
+                                {doubt.answers.length}
+                              </span>
+                            </h2>
+                            <span className="text-xs text-navy-500">Sorted by helpfulness</span>
+                          </div>
+
+                          {doubt.answers.length === 0 ? (
+                            <div className="bg-cream-100 rounded-2xl p-8 border border-cream-200 text-center space-y-2">
+                              <span className="text-3xl">🌱</span>
+                              <h3 className="font-bold text-navy-900 text-sm">No answers yet!</h3>
+                              <p className="text-xs text-navy-500 max-w-sm mx-auto">
+                                Be the first peer to help {doubt.authorName} solve this problem. Earn up to 25 peer reputation points!
+                              </p>
+                            </div>
+                          ) : (
+                            doubt.answers.map((ans) => (
+                              <div 
+                                key={ans.id}
+                                className={`rounded-2xl p-6 border transition shadow-soft ${
+                                  ans.isBestAnswer 
+                                    ? 'bg-orange-50/70 border-orange-300 ring-2 ring-orange-400/40' 
+                                    : 'bg-cream-100 border-cream-200'
+                                }`}
+                              >
+                                {ans.isBestAnswer && (
+                                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-full mb-3 shadow-sm">
+                                    <span>★</span>
+                                    <span>Verified Best Peer Solution</span>
+                                  </div>
+                                )}
+
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div className="flex items-center gap-3">
+                                    <img 
+                                      src={ans.authorAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"} 
+                                      alt={ans.authorName}
+                                      className="w-9 h-9 rounded-xl object-cover ring-2 ring-teal-500/40"
+                                    />
+                                    <div>
+                                      <h4 className="font-bold text-sm text-navy-900 leading-tight">{ans.authorName}</h4>
+                                      <p className="text-[11px] text-navy-500">{ans.authorCollege}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-navy-400">{ans.createdAt}</span>
+                                </div>
+
+                                <div className="text-sm text-navy-800 leading-relaxed whitespace-pre-line">
+                                  {ans.answerText}
+                                </div>
+
+                                {/* Answers Action Bar: Upvotes, Ratings, Mark Best Answer */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-cream-200/80 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    {/* Upvote Button */}
+                                    <button 
+                                      onClick={() => handleUpvoteAnswer(doubt.id, ans.id)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-cream-300 hover:border-teal-400 text-navy-800 font-bold hover:text-teal-700 transition shadow-sm"
+                                    >
+                                      <span>▲</span>
+                                      <span>Helpful ({ans.upvotes})</span>
+                                    </button>
+
+                                    {/* Rate Answer Button */}
+                                    <button 
+                                      onClick={() => setShowRatingModal({
+                                        targetType: 'answer',
+                                        doubtId: doubt.id,
+                                        targetId: ans.id,
+                                        targetName: ans.authorName
+                                      })}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-100/70 hover:bg-orange-200/80 text-orange-800 font-bold transition"
+                                    >
+                                      <span>★</span>
+                                      <span>Rate Answer</span>
+                                    </button>
+                                  </div>
+
+                                  {/* Mark as Best Answer Toggle */}
+                                  {!ans.isBestAnswer && (
+                                    <button 
+                                      onClick={() => handleMarkBestAnswer(doubt.id, ans.id)}
+                                      className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline"
+                                    >
+                                      ✓ Mark as Best Answer
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Peer Ratings on this Answer */}
+                                {ans.ratings && ans.ratings.length > 0 && (
+                                  <div className="mt-3 pt-2.5 border-t border-cream-200/60 flex items-center gap-2 text-xs text-navy-600">
+                                    <span className="font-semibold text-orange-600">Rated {ans.ratings[0].score}★</span>
+                                    <span>by {ans.ratings[0].rater}:</span>
+                                    <em className="text-navy-700 font-normal">"{ans.ratings[0].feedback}"</em>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Reply Box Card */}
+                        <div className="bg-cream-100 rounded-2xl p-6 border border-cream-200 shadow-soft">
+                          <h3 className="font-bold text-sm text-navy-900 mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+                            <span>Post Your Answer as {user.name}</span>
+                          </h3>
+                          <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const textarea = e.target.answerContent;
+                            handleAddAnswer(doubt.id, textarea.value);
+                            textarea.value = '';
+                          }} className="space-y-3">
+                            <textarea 
+                              name="answerContent"
+                              rows="4"
+                              required
+                              placeholder="Write a clear, step-by-step solution. Mention formulas, code bounds, or analogies to help your peer understand..."
+                              className="w-full bg-cream-50 border border-cream-300 rounded-xl p-4 text-sm text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500 transition shadow-inner font-sans resize-y"
+                            ></textarea>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-[11px] text-navy-500">Be respectful and encourage collaborative learning.</span>
+                              <button 
+                                type="submit"
+                                className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 hover:-translate-y-0.5"
+                              >
+                                <span>Submit Answer</span>
+                                <span>→</span>
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+
+                      </div>
+                    );
+                  })()
+                ) : (
+                  /* Doubt Board List View */
+                  <div className="space-y-6">
+                    
+                    {/* Header Banner */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-navy-900 text-cream-50 p-6 rounded-2xl shadow-card">
+                      <div>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-teal-900 text-teal-300 rounded-full text-xs font-semibold mb-2">
+                          <span>Forum Community</span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">University Doubt Board</h1>
+                        <p className="text-xs sm:text-sm text-cream-300 mt-1">Browse, filter, and solve academic questions asked by engineering peers.</p>
+                      </div>
+
+                      <button 
+                        onClick={() => setCurrentTab('ask')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 flex-shrink-0"
+                      >
+                        <span className="text-base leading-none">+</span>
+                        <span>Ask a Doubt</span>
+                      </button>
+                    </div>
+
+                    {/* Filter & Search Bar */}
+                    <div className="bg-cream-100 p-4 rounded-2xl border border-cream-200 shadow-soft flex flex-col md:flex-row items-center gap-3">
+                      {/* Search Input */}
+                      <div className="relative flex-1 w-full">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-navy-400">
+                          🔍
+                        </span>
+                        <input 
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search doubts by keyword (e.g. malloc, QuickSort, Maxwell)..."
+                          className="w-full pl-9 pr-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs sm:text-sm text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-navy-400 hover:text-navy-700 text-xs">
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Subject Filter Dropdown */}
+                      <div className="w-full md:w-56">
+                        <select 
+                          value={selectedSubjectFilter}
+                          onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                          className="w-full py-2.5 px-3 bg-cream-50 border border-cream-300 rounded-xl text-xs sm:text-sm font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Doubts List */}
+                    <div className="space-y-4">
+                      {(() => {
+                        const filteredDoubts = doubts.filter(d => {
+                          const matchesSearch = searchQuery === '' || 
+                            d.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            d.questionText.toLowerCase().includes(searchQuery.toLowerCase());
+                          const matchesSubject = selectedSubjectFilter === 'All Subjects' || d.subject === selectedSubjectFilter;
+                          return matchesSearch && matchesSubject;
+                        });
+
+                        if (filteredDoubts.length === 0) {
+                          return (
+                            <div className="bg-cream-100 rounded-2xl p-12 text-center border border-cream-200">
+                              <span className="text-4xl block mb-2">🔍</span>
+                              <h3 className="font-bold text-navy-900 text-base">No doubts match your search</h3>
+                              <p className="text-xs text-navy-500 mt-1">Try another keyword or select "All Subjects".</p>
+                              <button 
+                                onClick={() => { setSearchQuery(''); setSelectedSubjectFilter('All Subjects'); }}
+                                className="mt-4 px-4 py-2 bg-navy-800 text-cream-50 rounded-xl text-xs font-bold"
+                              >
+                                Clear Filters
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return filteredDoubts.map(doubt => (
+                          <div 
+                            key={doubt.id}
+                            onClick={() => handleOpenDoubt(doubt.id)}
+                            className="bg-cream-100 hover:bg-white rounded-2xl p-5 sm:p-6 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
+                                  {doubt.subject}
+                                </span>
+                                <span className="text-xs text-navy-500 font-semibold">{doubt.semester}</span>
+                                {doubt.bestAnswerFlag && (
+                                  <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full flex items-center gap-1">
+                                    <span>★</span> Best Solution
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-navy-400">{doubt.createdAt}</span>
+                            </div>
+
+                            <h3 className="font-extrabold text-navy-900 text-base sm:text-lg group-hover:text-teal-700 transition leading-snug">
+                              {doubt.title}
+                            </h3>
+
+                            <p className="text-xs sm:text-sm text-navy-600 line-clamp-2 mt-2 leading-relaxed">
+                              {doubt.questionText}
+                            </p>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-cream-200 text-xs text-navy-500">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-navy-800">{doubt.authorName}</span>
+                                <span className="text-navy-400">•</span>
+                                <span className="font-mono text-[11px] text-navy-400">{doubt.authorUid}</span>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg">
+                                  💬 {doubt.answers.length} {doubt.answers.length === 1 ? 'Answer' : 'Answers'}
+                                </span>
+                                <span className="font-bold text-orange-600 group-hover:translate-x-0.5 transition">
+                                  Join Discussion →
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* VIEW: NOTES LIBRARY PAGE */}
+            {currentTab === 'notes' && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* Header Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-teal-800 to-navy-900 text-cream-50 p-6 rounded-2xl shadow-card border border-teal-700/40">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-teal-700/60 text-teal-200 rounded-full text-xs font-semibold mb-2">
+                      <span>Verified Notes Repository</span>
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">University Notes Library</h1>
+                    <p className="text-xs sm:text-sm text-cream-200 mt-1">Search, preview, and download semester unit notes and exam summaries.</p>
+                  </div>
+
+                  <button 
+                    onClick={() => setShowUploadNoteModal(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 flex-shrink-0"
+                  >
+                    <span className="text-base leading-none">↑</span>
+                    <span>Upload Notes (+20 pts)</span>
+                  </button>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="bg-cream-100 p-4 rounded-2xl border border-cream-200 shadow-soft space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    
+                    {/* Search Input (6 Cols) */}
+                    <div className="md:col-span-6 relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-navy-400">
+                        🔍
+                      </span>
+                      <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search notes by topic (e.g. Maths Unit 1, C Programming, K-Maps)..."
+                        className="w-full pl-9 pr-4 py-2.5 bg-cream-50 border border-cream-300 rounded-xl text-xs sm:text-sm text-navy-900 placeholder:text-navy-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+
+                    {/* Subject Filter (3 Cols) */}
+                    <div className="md:col-span-3">
+                      <select 
+                        value={selectedSubjectFilter}
+                        onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-cream-50 border border-cream-300 rounded-xl text-xs sm:text-sm font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Semester Filter (3 Cols) */}
+                    <div className="md:col-span-3">
+                      <select 
+                        value={selectedSemesterFilter}
+                        onChange={(e) => setSelectedSemesterFilter(e.target.value)}
+                        className="w-full py-2.5 px-3 bg-cream-50 border border-cream-300 rounded-xl text-xs sm:text-sm font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                  </div>
+
+                  {/* Quick Category Badges */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-1 text-xs">
+                    <span className="text-navy-500 font-semibold flex-shrink-0 mr-1">Quick Select:</span>
+                    {["Maths", "C Programming", "Physics", "Data Structures", "Operating Systems"].map((sub) => (
+                      <button
+                        key={sub}
+                        onClick={() => setSelectedSubjectFilter(sub)}
+                        className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                          selectedSubjectFilter === sub 
+                            ? 'bg-teal-600 text-white' 
+                            : 'bg-cream-200/80 text-navy-700 hover:bg-cream-300'
+                        }`}
+                      >
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes Grid Display */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {(() => {
+                    const filteredNotes = notes.filter(n => {
+                      const matchesSearch = searchQuery === '' || 
+                        n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        n.description.toLowerCase().includes(searchQuery.toLowerCase());
+                      const matchesSubject = selectedSubjectFilter === 'All Subjects' || n.subject === selectedSubjectFilter;
+                      const matchesSemester = selectedSemesterFilter === 'All Semesters' || n.semester === selectedSemesterFilter;
+                      return matchesSearch && matchesSubject && matchesSemester;
+                    });
+
+                    if (filteredNotes.length === 0) {
+                      return (
+                        <div className="col-span-full bg-cream-100 rounded-2xl p-12 text-center border border-cream-200">
+                          <span className="text-4xl block mb-2">📚</span>
+                          <h3 className="font-bold text-navy-900 text-base">No notes found for this subject/semester</h3>
+                          <p className="text-xs text-navy-500 mt-1">Try resetting the filter or be the first to upload notes for your batch!</p>
+                          <button 
+                            onClick={() => { setSearchQuery(''); setSelectedSubjectFilter('All Subjects'); setSelectedSemesterFilter('All Semesters'); }}
+                            className="mt-4 px-4 py-2 bg-navy-800 text-cream-50 rounded-xl text-xs font-bold"
+                          >
+                            Reset All Filters
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return filteredNotes.map(note => (
+                      <div 
+                        key={note.id}
+                        className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card flex flex-col justify-between"
+                      >
+                        <div>
+                          {/* Badges Header */}
+                          <div className="flex items-start justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2.5 py-0.5 bg-navy-800 text-cream-50 text-[11px] font-bold rounded-md">
+                                {note.subject}
+                              </span>
+                              <span className="px-2 py-0.5 bg-cream-200 text-navy-700 text-[11px] font-semibold rounded-md">
+                                {note.semester}
+                              </span>
+                            </div>
+
+                            <StarRatingDisplay rating={note.rating} />
+                          </div>
+
+                          <h3 className="font-extrabold text-navy-900 text-base leading-snug">
+                            {note.title}
+                          </h3>
+
+                          <p className="text-xs text-navy-600 line-clamp-3 mt-2 leading-relaxed">
+                            {note.description}
+                          </p>
+                        </div>
+
+                        {/* Card Footer: Uploader & Download Actions */}
+                        <div className="mt-5 pt-3.5 border-t border-cream-200">
+                          <div className="flex items-center justify-between text-xs text-navy-500 mb-3">
+                            <span className="text-[11px]">By <strong className="text-navy-900 font-semibold">{note.uploaderName}</strong></span>
+                            <span className="text-[11px] font-mono text-navy-400">{note.pages} pages • {note.fileSize}</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button 
+                              onClick={() => setPreviewNote(note)}
+                              className="w-full bg-cream-200 hover:bg-cream-300 text-navy-800 font-bold text-xs py-2 rounded-xl transition text-center"
+                            >
+                              Preview
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setNotes(prev => prev.map(n => n.id === note.id ? { ...n, downloads: n.downloads + 1 } : n));
+                                showNotification(`Downloading "${note.title}"... (${note.fileSize})`);
+                              }}
+                              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-sm"
+                            >
+                              <span>Download</span>
+                              <span>↓</span>
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    ));
+                  })()}
+                </div>
+
+              </div>
+            )}
+
+            {/* VIEW: STUDY GROUPS */}
+            {currentTab === 'groups' && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* Header Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-navy-900 to-teal-900 text-cream-50 p-6 rounded-2xl shadow-card border border-teal-700/40">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-orange-600 text-white rounded-full text-xs font-semibold mb-2">
+                      <span>Peer Circles</span>
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Course Study Groups</h1>
+                    <p className="text-xs sm:text-sm text-cream-200 mt-1">Join or start weekly problem-solving circles and exam prep squads.</p>
+                  </div>
+
+                  <button 
+                    onClick={() => setShowCreateGroupModal(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 flex-shrink-0"
+                  >
+                    <span className="text-base leading-none">+</span>
+                    <span>Create Study Group</span>
+                  </button>
+                </div>
+
+                {/* Groups Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {groups.map((group) => {
+                    const percentFilled = Math.min(100, Math.round((group.membersCount / group.maxMembers) * 100));
+                    return (
+                      <div 
+                        key={group.id}
+                        className="bg-cream-100 hover:bg-white rounded-2xl p-6 border border-cream-200 hover:border-teal-400 transition-all shadow-soft flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-xs font-bold rounded-full">
+                                {group.subject}
+                              </span>
+                              <span className="text-xs text-navy-500 font-semibold">{group.semester}</span>
+                            </div>
+
+                            {group.isJoined && (
+                              <span className="px-2.5 py-0.5 bg-teal-600 text-white text-[11px] font-bold rounded-full">
+                                Joined Member
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="font-extrabold text-navy-900 text-lg leading-snug">
+                            {group.name}
+                          </h3>
+
+                          <p className="text-xs text-navy-600 mt-2 leading-relaxed">
+                            {group.description}
+                          </p>
+
+                          {/* Meeting Schedule Pill */}
+                          <div className="mt-3.5 bg-cream-50 p-2.5 rounded-xl border border-cream-200/80 flex items-center gap-2 text-xs text-navy-700">
+                            <span className="text-orange-500">⏰</span>
+                            <span className="font-medium">{group.schedule}</span>
+                          </div>
+
+                          {/* Tags */}
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {group.tags.map(t => (
+                              <span key={t} className="text-[10px] bg-cream-200 text-navy-700 px-2 py-0.5 rounded-md font-semibold">
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Members Capacity and Join Button */}
+                        <div className="mt-5 pt-3.5 border-t border-cream-200">
+                          <div className="flex items-center justify-between text-xs mb-1.5">
+                            <span className="text-navy-500">Moderator: <strong className="text-navy-900">{group.moderator}</strong></span>
+                            <span className="font-mono font-bold text-navy-800">{group.membersCount}/{group.maxMembers} peers</span>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div className="w-full bg-cream-200 h-1.5 rounded-full overflow-hidden mb-3.5">
+                            <div 
+                              className={`h-full ${percentFilled > 80 ? 'bg-orange-500' : 'bg-teal-500'}`}
+                              style={{ width: `${percentFilled}%` }}
+                            ></div>
+                          </div>
+
+                          <button 
+                            onClick={() => handleToggleJoinGroup(group.id)}
+                            className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                              group.isJoined 
+                                ? 'bg-cream-200 hover:bg-cream-300 text-navy-800' 
+                                : 'bg-teal-600 hover:bg-teal-700 text-white shadow-md'
+                            }`}
+                          >
+                            {group.isJoined ? (
+                              <span>✓ Member (Click to Leave)</span>
+                            ) : (
+                              <span>+ Join Study Group</span>
+                            )}
+                          </button>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            )}
+
+            {/* VIEW: PEER TUTORS DIRECTORY */}
+            {currentTab === 'tutors' && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* Header Banner */}
+                <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-teal-950 text-cream-50 p-6 rounded-2xl shadow-card border border-navy-700">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-teal-500 text-navy-950 rounded-full text-xs font-bold mb-2">
+                    <span>1-on-1 Academic Help</span>
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Peer Tutors Directory</h1>
+                  <p className="text-xs sm:text-sm text-cream-200 mt-1">Connect with verified seniors and high-achieving classmates for 1-on-1 doubts clearing.</p>
+                </div>
+
+                {/* Tutors Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {tutors.map((tutor) => (
+                    <div 
+                      key={tutor.id}
+                      className="bg-cream-100 hover:bg-white rounded-2xl p-6 border border-cream-200 hover:border-teal-400 transition-all shadow-soft flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={tutor.avatar} 
+                              alt={tutor.name}
+                              className="w-12 h-12 rounded-xl object-cover ring-2 ring-teal-500/50"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-extrabold text-base text-navy-900">{tutor.name}</h3>
+                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 font-bold text-[10px] rounded-full">
+                                  {tutor.badge}
+                                </span>
+                              </div>
+                              <p className="text-xs text-navy-500">{tutor.course}</p>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <StarRatingDisplay rating={tutor.rating} count={tutor.reviewsCount} size="md" />
+                            <span className="text-[10px] text-teal-700 font-semibold block mt-0.5">{tutor.rate}</span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-navy-600 leading-relaxed mt-2">
+                          {tutor.bio}
+                        </p>
+
+                        <div className="mt-3.5">
+                          <span className="text-[11px] font-bold text-navy-800 uppercase tracking-wider block mb-1.5">Subjects Tutored:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {tutor.subjects.map(sub => (
+                              <span key={sub} className="text-xs bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-0.5 rounded-lg font-semibold">
+                                {sub}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 text-xs text-navy-500 flex items-center gap-1.5">
+                          <span className="text-teal-600">📅</span>
+                          <span>Availability: <strong className="text-navy-800">{tutor.availability}</strong></span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="mt-5 pt-3.5 border-t border-cream-200 flex items-center gap-2">
+                        <button 
+                          onClick={() => showNotification(`Session request sent to ${tutor.name}! They will confirm via university email.`)}
+                          className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs py-2.5 rounded-xl transition text-center shadow-sm"
+                        >
+                          Book Free Session
+                        </button>
+                        <button 
+                          onClick={() => setShowRatingModal({
+                            targetType: 'tutor',
+                            targetId: tutor.id,
+                            targetName: tutor.name
+                          })}
+                          className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold text-xs px-3.5 py-2.5 rounded-xl transition"
+                        >
+                          Rate Tutor
+                        </button>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+
+          </main>
+
+          {/* MOBILE BOTTOM NAVIGATION BAR (mimics native mobile app experience) */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-navy-900 border-t border-navy-800 z-40 safe-bottom shadow-elevated">
+            <div className="grid grid-cols-5 items-center justify-around py-2 px-1">
+              
+              {/* Home */}
+              <button 
+                onClick={() => { setCurrentTab('home'); setActiveDoubtId(null); }}
+                className={`flex flex-col items-center justify-center py-1 transition ${
+                  currentTab === 'home' && !activeDoubtId ? 'text-teal-400 font-bold' : 'text-cream-300'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span className="text-[10px] mt-0.5">Home</span>
+              </button>
+
+              {/* Doubts */}
+              <button 
+                onClick={() => { setCurrentTab('doubts'); setActiveDoubtId(null); }}
+                className={`flex flex-col items-center justify-center py-1 transition ${
+                  currentTab === 'doubts' ? 'text-teal-400 font-bold' : 'text-cream-300'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="text-[10px] mt-0.5">Doubts</span>
+              </button>
+
+              {/* Ask (+ Center CTA) */}
+              <button 
+                onClick={() => { setCurrentTab('ask'); setActiveDoubtId(null); }}
+                className="flex flex-col items-center justify-center -mt-4"
+              >
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shadow-lg shadow-orange-600/40 border-2 border-navy-900 active:scale-95 transition-transform">
+                  <span className="text-2xl font-bold leading-none">+</span>
+                </div>
+                <span className="text-[10px] mt-1 text-orange-400 font-bold">Ask Doubt</span>
+              </button>
+
+              {/* Notes */}
+              <button 
+                onClick={() => { setCurrentTab('notes'); setActiveDoubtId(null); }}
+                className={`flex flex-col items-center justify-center py-1 transition ${
+                  currentTab === 'notes' ? 'text-teal-400 font-bold' : 'text-cream-300'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+                <span className="text-[10px] mt-0.5">Notes</span>
+              </button>
+
+              {/* Groups */}
+              <button 
+                onClick={() => { setCurrentTab('groups'); setActiveDoubtId(null); }}
+                className={`flex flex-col items-center justify-center py-1 transition ${
+                  currentTab === 'groups' ? 'text-teal-400 font-bold' : 'text-cream-300'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span className="text-[10px] mt-0.5">Groups</span>
+              </button>
+
+            </div>
+          </nav>
+
+          {/* MODAL: STAR RATING SYSTEM */}
+          {showRatingModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-cream-100 rounded-2xl max-w-md w-full p-6 border border-cream-300 shadow-elevated">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl text-orange-500">★</span>
+                    <h3 className="font-extrabold text-navy-900 text-lg">
+                      {showRatingModal.targetType === 'answer' ? 'Rate Peer Answer' : 'Rate Peer Tutor'}
+                    </h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowRatingModal(null)}
+                    className="text-navy-400 hover:text-navy-900 text-sm font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p className="text-xs text-navy-600 mb-4">
+                  How helpful was the explanation by <strong>{showRatingModal.targetName}</strong>? Your rating rewards quality university contributors.
+                </p>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const score = parseInt(e.target.score.value) || 5;
+                  const feedback = e.target.feedback.value;
+                  handleSubmitRating(score, feedback);
+                }} className="space-y-4">
+                  
+                  {/* Interactive Star Picker */}
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase tracking-wider mb-2">
+                      Score (1 to 5 Stars)
+                    </label>
+                    <select 
+                      name="score" 
+                      defaultValue="5"
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl px-4 py-2.5 text-sm font-bold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="5">★★★★★ (5 Stars - Exceptional & clear)</option>
+                      <option value="4">★★★★☆ (4 Stars - Very helpful)</option>
+                      <option value="3">★★★☆☆ (3 Stars - Decent explanation)</option>
+                      <option value="2">★★☆☆☆ (2 Stars - Partially helpful)</option>
+                      <option value="1">★☆☆☆☆ (1 Star - Needs improvement)</option>
+                    </select>
+                  </div>
+
+                  {/* Feedback Textarea */}
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase tracking-wider mb-2">
+                      Feedback Note (Optional)
+                    </label>
+                    <textarea 
+                      name="feedback"
+                      rows="3"
+                      placeholder="e.g. Great explanation of memory allocation and index limits!"
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl p-3 text-xs text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setShowRatingModal(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-navy-700 hover:bg-cream-200"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition"
+                    >
+                      Submit Rating
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: CREATE STUDY GROUP */}
+          {showCreateGroupModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-cream-100 rounded-2xl max-w-lg w-full p-6 border border-cream-300 shadow-elevated max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-extrabold text-navy-900 text-lg">Create Course Study Group</h3>
+                  <button onClick={() => setShowCreateGroupModal(false)} className="text-navy-400 hover:text-navy-900 text-sm font-bold">
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = e.target;
+                  handleCreateGroup({
+                    name: f.groupName.value,
+                    subject: f.subject.value,
+                    semester: f.semester.value,
+                    schedule: f.schedule.value,
+                    maxMembers: f.maxMembers.value,
+                    description: f.description.value
+                  });
+                }} className="space-y-4">
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Group Name *</label>
+                    <input 
+                      type="text" 
+                      name="groupName" 
+                      required 
+                      placeholder="e.g. Maths Unit 3 Numerical Methods Drill" 
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Subject</label>
+                      <select name="subject" className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900">
+                        {SUBJECTS.filter(s => s !== "All Subjects").map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Semester</label>
+                      <select name="semester" className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900">
+                        {SEMESTERS.filter(s => s !== "All Semesters").map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Schedule & Location / Link</label>
+                    <input 
+                      type="text" 
+                      name="schedule" 
+                      defaultValue="Wednesdays 6:00 PM • Library Room 201"
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Max Peers</label>
+                    <input 
+                      type="number" 
+                      name="maxMembers" 
+                      defaultValue="40" 
+                      min="5" 
+                      max="150"
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Group Goal / Description</label>
+                    <textarea 
+                      name="description" 
+                      rows="3" 
+                      required
+                      placeholder="Describe what your group will study and collaborate on..." 
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl p-3 text-xs text-navy-900"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setShowCreateGroupModal(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-navy-700">
+                      Cancel
+                    </button>
+                    <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl">
+                      Launch Group
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: UPLOAD NOTES */}
+          {showUploadNoteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-cream-100 rounded-2xl max-w-lg w-full p-6 border border-cream-300 shadow-elevated">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-extrabold text-navy-900 text-lg">Upload Notes to Library</h3>
+                  <button onClick={() => setShowUploadNoteModal(false)} className="text-navy-400 hover:text-navy-900 text-sm font-bold">
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = e.target;
+                  handleUploadNote({
+                    title: f.title.value,
+                    subject: f.subject.value,
+                    semester: f.semester.value,
+                    description: f.description.value
+                  });
+                }} className="space-y-4">
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Notes Title (Unit & Subject) *</label>
+                    <input 
+                      type="text" 
+                      name="title" 
+                      required 
+                      placeholder="e.g. Maths Unit 2: Laplace Transforms & Differential Eq" 
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Subject</label>
+                      <select name="subject" className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900">
+                        {SUBJECTS.filter(s => s !== "All Subjects").map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Semester</label>
+                      <select name="semester" className="w-full bg-cream-50 border border-cream-300 rounded-xl px-3 py-2 text-xs text-navy-900">
+                        {SEMESTERS.filter(s => s !== "All Semesters").map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Attach File (Simulated)</label>
+                    <div className="border-2 border-dashed border-cream-300 rounded-xl p-4 text-center bg-cream-50 text-xs text-navy-600">
+                      📄 Click to attach PDF / Handwritten Scans (Max 25 MB)
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-navy-800 uppercase mb-1">Summary Description</label>
+                    <textarea 
+                      name="description" 
+                      rows="2" 
+                      placeholder="Summarize key derivations, formulas, or past exam solved papers included..."
+                      className="w-full bg-cream-50 border border-cream-300 rounded-xl p-3 text-xs text-navy-900"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setShowUploadNoteModal(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-navy-700">
+                      Cancel
+                    </button>
+                    <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md">
+                      Share with Campus
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: PREVIEW NOTES */}
+          {previewNote && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-cream-100 rounded-2xl max-w-xl w-full p-6 border border-cream-300 shadow-elevated">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 bg-navy-800 text-cream-50 text-xs font-bold rounded-md">{previewNote.subject}</span>
+                    <span className="text-xs text-navy-500 font-semibold">{previewNote.semester}</span>
+                  </div>
+                  <button onClick={() => setPreviewNote(null)} className="text-navy-400 hover:text-navy-900 text-sm font-bold">
+                    ✕
+                  </button>
+                </div>
+
+                <h3 className="font-extrabold text-navy-900 text-lg leading-snug">{previewNote.title}</h3>
+                <p className="text-xs text-navy-600 mt-2">{previewNote.description}</p>
+
+                {/* Simulated Document Preview Page */}
+                <div className="my-4 bg-white border border-cream-300 rounded-xl p-6 shadow-inner text-navy-800 font-serif text-xs space-y-2.5">
+                  <div className="border-b border-gray-200 pb-2 mb-2 flex justify-between font-sans text-[10px] text-gray-500">
+                    <span>UNIT NOTE PREVIEW • PAGE 1 OF {previewNote.pages}</span>
+                    <span>Uploader: {previewNote.uploaderName}</span>
+                  </div>
+                  <h4 className="font-sans font-bold text-sm text-navy-900">{previewNote.title}</h4>
+                  <p>1. Fundamental Definitions & Theorems applicable to {previewNote.subject}.</p>
+                  <p>2. Detailed derivation of standard equations and boundary conditions.</p>
+                  <p>3. Solved examples from previous year university exam papers (2020-2025).</p>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-900 font-mono text-[11px]">
+                    [Formulas, circuit graphs, or code traces rendered in complete PDF]
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-navy-500 font-mono">{previewNote.fileSize} • {previewNote.downloads} peers downloaded</span>
+                  <button 
+                    onClick={() => {
+                      showNotification(`Downloading "${previewNote.title}"...`);
+                      setPreviewNote(null);
+                    }}
+                    className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+                  >
+                    Download Full PDF ↓
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: USER PROFILE & STATS */}
+          {showProfileModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+              <div className="bg-cream-100 rounded-2xl max-w-md w-full p-6 border border-cream-300 shadow-elevated">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-extrabold text-navy-900 text-lg">Student Profile</h3>
+                  <button onClick={() => setShowProfileModal(false)} className="text-navy-400 hover:text-navy-900 text-sm font-bold">
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4 mb-4">
+                  <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-2xl object-cover ring-2 ring-teal-500" />
+                  <div>
+                    <h4 className="font-extrabold text-navy-900 text-base">{user.name}</h4>
+                    <p className="text-xs text-teal-700 font-mono font-bold">{user.uid}</p>
+                    <p className="text-[11px] text-navy-500">{user.college}</p>
+                  </div>
+                </div>
+
+                <div className="bg-cream-50 p-3.5 rounded-xl border border-cream-200 space-y-1.5 text-xs text-navy-700 mb-4">
+                  <p><strong>Course:</strong> {user.course}</p>
+                  <p><strong>Current Level:</strong> {user.semester}</p>
+                  <p><strong>Enrolled Subjects:</strong> {user.subjects.join(", ")}</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                  <div className="bg-navy-900 text-cream-50 p-2.5 rounded-xl">
+                    <span className="block font-bold text-teal-400 text-base">{user.doubtsCount}</span>
+                    <span className="text-[10px] text-cream-300">Doubts Asked</span>
+                  </div>
+                  <div className="bg-navy-900 text-cream-50 p-2.5 rounded-xl">
+                    <span className="block font-bold text-orange-400 text-base">{user.answersCount}</span>
+                    <span className="text-[10px] text-cream-300">Answers Given</span>
+                  </div>
+                  <div className="bg-navy-900 text-cream-50 p-2.5 rounded-xl">
+                    <span className="block font-bold text-teal-300 text-base">{user.points}</span>
+                    <span className="text-[10px] text-cream-300">Peer Points</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setShowProfileModal(false)}
+                  className="w-full bg-navy-800 hover:bg-navy-900 text-cream-50 font-bold text-xs py-2.5 rounded-xl transition"
+                >
+                  Close Profile
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="bg-navy-950 text-cream-300 border-t border-navy-800 py-8 px-4 text-center text-xs space-y-2 mt-auto">
+            <div className="flex items-center justify-center gap-2 font-bold text-cream-100 text-sm">
+              <span className="text-teal-400">Student to Student Study App</span>
+              <span>•</span>
+              <span className="text-orange-400">Peer Learning Network</span>
+            </div>
+            <p className="text-navy-400 max-w-md mx-auto">
+              Connecting university engineering students for collaborative doubts solving, verified course notes sharing, and peer mentoring.
+            </p>
+            <p className="text-[11px] text-navy-500 pt-2">
+              Designed with Navy Blue, Cream, Teal, and Orange • Fully responsive mobile-friendly layout
+            </p>
+          </footer>
+
+        </div>
+      );
+    }
+
+    // Render the React application
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
