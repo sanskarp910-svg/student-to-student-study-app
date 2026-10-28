@@ -10,11 +10,16 @@ import PeerTutors from './components/PeerTutors';
 import RatingModal from './components/RatingModal';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
-import SupabaseModal from './components/SupabaseModal';
 import LoginScreen from './components/LoginScreen';
-import { getSupabase, isSupabaseConnected } from './lib/supabase';
 import { 
-  MOCK_USERS,
+  supabase, 
+  isConfigured as isSupabaseConfigured, 
+  cloudAuth, 
+  cloudDoubts, 
+  cloudNotes, 
+  cloudGroups 
+} from './lib/supabase';
+import { 
   INITIAL_DOUBTS, 
   INITIAL_NOTES, 
   INITIAL_STUDY_GROUPS, 
@@ -25,48 +30,11 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState('home');
   const [activeDoubtId, setActiveDoubtId] = useState(null);
 
-  // Registered Users Directory (Persisted in localStorage)
-  const [registeredUsers, setRegisteredUsers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('study_app_registered_users');
-      return saved ? JSON.parse(saved) : MOCK_USERS;
-    } catch {
-      return MOCK_USERS;
-    }
-  });
+  // 100% Cloud User State (No localStorage for DB)
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Current Logged-In User:
-  // Explicitly wipe out any old preset stored in localStorage so site ALWAYS asks for login upon opening!
-  const [user, setUser] = useState(() => {
-    try {
-      // Purge any legacy preset from previous builds
-      localStorage.removeItem('study_app_current_user');
-      const sessionUser = sessionStorage.getItem('study_app_session_user');
-      return sessionUser ? JSON.parse(sessionUser) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  // Keep active session in sessionStorage during current browsing tab only
-  useEffect(() => {
-    try {
-      localStorage.removeItem('study_app_current_user');
-      if (user) {
-        sessionStorage.setItem('study_app_session_user', JSON.stringify(user));
-      } else {
-        sessionStorage.removeItem('study_app_session_user');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    localStorage.setItem('study_app_registered_users', JSON.stringify(registeredUsers));
-  }, [registeredUsers]);
-
-  // Core Data Stores
+  // Cloud Data Stores
   const [doubts, setDoubts] = useState(INITIAL_DOUBTS);
   const [notes, setNotes] = useState(INITIAL_NOTES);
   const [groups, setGroups] = useState(INITIAL_STUDY_GROUPS);
@@ -76,101 +44,165 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showSupabaseModal, setShowSupabaseModal] = useState(false);
   const [authModalConfig, setAuthModalConfig] = useState(null);
   const [previewNote, setPreviewNote] = useState(null);
-  const [supabaseConnected, setSupabaseConnected] = useState(isSupabaseConnected());
 
   const showNotification = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3800);
   };
 
-  // Auth Handlers
-  const handleRegister = async (newUserData) => {
-    const exists = registeredUsers.some(
-      u => u.uid.toLowerCase() === newUserData.uid.toLowerCase() || 
-           (u.email && u.email.toLowerCase() === newUserData.email.toLowerCase())
-    );
+  // Check Supabase Cloud Auth on Mount
+  useEffect(() => {
+    async function initCloudSession() {
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            // Fetch student profile from Supabase Cloud
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-    if (exists) {
-      showNotification("A student with this UID or Email is already registered!", "error");
-      return;
-    }
+            setUser(profile || {
+              id: session.user.id,
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
+              uid: session.user.user_metadata?.uid || "STD-CLOUD",
+              college: session.user.user_metadata?.college || "University Campus",
+              course: session.user.user_metadata?.course || "Engineering",
+              semester: session.user.user_metadata?.semester || "Semester 1",
+              subjects: session.user.user_metadata?.subjects || ["Maths", "C Programming"],
+              points: 100
+            });
+          }
 
-    const updatedList = [newUserData, ...registeredUsers];
-    setRegisteredUsers(updatedList);
-    setUser(newUserData);
-    setAuthModalConfig(null);
+          // Fetch cloud doubts & notes
+          const [cloudDoubtsData, cloudNotesData] = await Promise.all([
+            cloudDoubts.fetchAll().catch(() => []),
+            cloudNotes.fetchAll().catch(() => [])
+          ]);
 
-    // If Supabase is connected, sync directly
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        await supabase.from('profiles').insert([{
-          name: newUserData.name,
-          uid: newUserData.uid,
-          college: newUserData.college,
-          course: newUserData.course,
-          semester: newUserData.semester,
-          email: newUserData.email,
-          points: newUserData.points
-        }]);
-      } catch (e) {
-        console.warn("Supabase profile sync:", e);
+          if (cloudDoubtsData && cloudDoubtsData.length > 0) {
+            setDoubts(cloudDoubtsData);
+          }
+          if (cloudNotesData && cloudNotesData.length > 0) {
+            setNotes(cloudNotesData);
+          }
+        } catch (err) {
+          console.warn("Cloud session fetch error:", err);
+        }
       }
+      setLoadingAuth(false);
     }
 
-    showNotification(`Welcome to campus, ${newUserData.name}! Registered with +100 bonus points 🎉`);
+    initCloudSession();
+
+    // Listen to Supabase Auth State changes in Real Time
+    if (isSupabaseConfigured && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          setUser(profile || {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
+            uid: session.user.user_metadata?.uid || "STD-CLOUD",
+            college: session.user.user_metadata?.college || "University Campus",
+            course: session.user.user_metadata?.course || "Engineering",
+            semester: session.user.user_metadata?.semester || "Semester 1",
+            subjects: session.user.user_metadata?.subjects || ["Maths", "C Programming"],
+            points: 100
+          });
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      });
+
+      return () => {
+        subscription?.unsubscribe();
+      };
+    }
+  }, []);
+
+  // 100% Cloud Registration Handler
+  const handleRegister = async (newUserData) => {
+    if (isSupabaseConfigured) {
+      try {
+        const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
+        setUser(result.profile || newUserData);
+        setAuthModalConfig(null);
+        showNotification(`Account created in Supabase Cloud! Welcome, ${newUserData.name} ☁️`);
+      } catch (err) {
+        showNotification(err.message || "Cloud registration failed", "error");
+      }
+    } else {
+      // In-memory session until Supabase keys are plugged in
+      setUser(newUserData);
+      setAuthModalConfig(null);
+      showNotification(`Welcome ${newUserData.name}! (Connect Supabase in Cloud Settings to sync to remote DB)`);
+    }
   };
 
-  const handleLogin = ({ email, user: demoUser }) => {
+  // 100% Cloud Login Handler
+  const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
       setUser(demoUser);
       setAuthModalConfig(null);
-      showNotification(`Logged in as ${demoUser.name} (${demoUser.uid}) 🎓`);
+      showNotification(`Signed in as ${demoUser.name} (${demoUser.uid})`);
       return;
     }
 
-    const found = registeredUsers.find(
-      u => (u.email && u.email.toLowerCase() === email.toLowerCase()) ||
-           u.uid.toLowerCase() === email.toLowerCase() ||
-           u.name.toLowerCase().includes(email.toLowerCase())
-    );
-
-    if (found) {
-      setUser(found);
-      setAuthModalConfig(null);
-      showNotification(`Welcome back, ${found.name}! 🚀`);
+    if (isSupabaseConfigured) {
+      try {
+        const result = await cloudAuth.signIn(email, password);
+        setUser(result.profile || {
+          name: result.user.user_metadata?.name || email.split('@')[0],
+          uid: result.user.user_metadata?.uid || "STD-CLOUD",
+          college: result.user.user_metadata?.college || "University Campus",
+          course: result.user.user_metadata?.course || "Engineering",
+          semester: result.user.user_metadata?.semester || "Semester 1",
+          subjects: ["Maths", "C Programming"],
+          points: 100
+        });
+        setAuthModalConfig(null);
+        showNotification(`Welcome back from Supabase Cloud! 🚀`);
+      } catch (err) {
+        showNotification(err.message || "Invalid cloud login credentials", "error");
+      }
     } else {
-      const tempUser = {
-        uid: email.startsWith('STD-') ? email : `STD-2025-${Math.floor(1000 + Math.random() * 9000)}`,
+      // Direct in-memory login
+      setUser({
+        uid: email.startsWith('STD-') ? email : `STD-${Math.floor(1000 + Math.random() * 9000)}`,
         name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
         college: "Apex Institute of Eng & Technology",
         course: "B.Tech Computer Science",
         semester: "Semester 3",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+        avatar: "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80",
         subjects: ["Maths", "C Programming", "Physics"],
         points: 100,
         doubtsCount: 0,
         answersCount: 0
-      };
-      setRegisteredUsers([tempUser, ...registeredUsers]);
-      setUser(tempUser);
+      });
       setAuthModalConfig(null);
-      showNotification(`Signed in as ${tempUser.name}!`);
+      showNotification(`Signed in!`);
     }
   };
 
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem('study_app_current_user');
-      sessionStorage.removeItem('study_app_session_user');
-    } catch (e) {}
+  // Cloud Sign Out
+  const handleLogout = async () => {
+    if (isSupabaseConfigured) {
+      await cloudAuth.signOut();
+    }
     setUser(null);
     setCurrentTab('home');
     setActiveDoubtId(null);
-    showNotification("You have been signed out.");
+    showNotification("You have been signed out from the cloud.");
   };
 
   const handleOpenDoubt = (id) => {
@@ -179,6 +211,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Cloud Doubt Creation
   const handlePostDoubt = async (newDoubtData) => {
     const newDoubt = {
       id: `dbt-${Date.now()}`,
@@ -199,11 +232,10 @@ export default function App() {
     setDoubts([newDoubt, ...doubts]);
     setUser(prev => ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }));
     
-    // Sync to Supabase if connected
-    const supabase = getSupabase();
-    if (supabase) {
+    // Save to Cloud Table if Supabase is active
+    if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('doubts').insert([{
+        await cloudDoubts.create({
           title: newDoubt.title,
           question_text: newDoubt.questionText,
           code_snippet: newDoubt.codeSnippet,
@@ -213,9 +245,9 @@ export default function App() {
           author_uid: newDoubt.authorUid,
           author_college: newDoubt.authorCollege,
           views_count: 1
-        }]);
-      } catch (e) {
-        console.warn("Supabase doubt insert:", e);
+        });
+      } catch (err) {
+        console.warn("Cloud doubt save:", err);
       }
     }
 
@@ -224,6 +256,7 @@ export default function App() {
     setCurrentTab('doubts');
   };
 
+  // Cloud Answer Creation
   const handleAddAnswer = async (doubtId, answerText) => {
     const newAnswer = {
       id: `ans-${Date.now()}`,
@@ -250,23 +283,21 @@ export default function App() {
 
     setUser(prev => ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }));
     
-    // Sync to Supabase if connected
-    const supabase = getSupabase();
-    if (supabase) {
+    if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('answers').insert([{
+        await cloudDoubts.addAnswer({
           author_name: newAnswer.authorName,
           author_uid: newAnswer.authorUid,
           answer_text: newAnswer.answerText,
           upvotes_count: 0,
           is_best_answer: false
-        }]);
-      } catch (e) {
-        console.warn("Supabase answer insert:", e);
+        });
+      } catch (err) {
+        console.warn("Cloud answer save:", err);
       }
     }
 
-    showNotification("Answer posted! You earned +25 peer contribution points 🚀");
+    showNotification("Answer posted! +25 peer contribution points 🚀");
   };
 
   const handleUpvoteAnswer = (doubtId, answerId) => {
@@ -352,8 +383,19 @@ export default function App() {
     setShowRatingModal(null);
   };
 
+  if (loadingAuth) {
+    return (
+      <div className="min-h-screen bg-cream-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-bold text-navy-800">Connecting to Cloud Platform...</p>
+        </div>
+      </div>
+    );
+  }
+
   // --- MANDATORY LOGIN GATE ---
-  // If no user is logged in, show Login / Register screen directly!
+  // Zero local storage presets! Always asks for login on open!
   if (!user) {
     return (
       <>
@@ -406,7 +448,7 @@ export default function App() {
         user={user}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenAuth={(mode) => setAuthModalConfig({ isOpen: true, mode })}
-        onOpenSupabase={() => setShowSupabaseModal(true)}
+        onOpenSupabase={() => showNotification("Cloud Database: Managed by Supabase Cloud ☁️")}
         onLogout={handleLogout}
         doubtsCount={doubts.length}
       />
@@ -497,16 +539,6 @@ export default function App() {
         setActiveDoubtId={setActiveDoubtId}
       />
 
-      {/* Supabase Cloud Data Inspector Modal */}
-      <SupabaseModal 
-        isOpen={showSupabaseModal}
-        onClose={() => setShowSupabaseModal(false)}
-        onConnectedChange={(status) => {
-          setSupabaseConnected(status);
-          showNotification(status ? "Supabase Cloud Database connected! ⚡" : "Supabase disconnected.");
-        }}
-      />
-
       {/* Authentication Modal (when switching accounts or registering from menu) */}
       {authModalConfig && (
         <AuthModal 
@@ -591,7 +623,7 @@ export default function App() {
           Connecting university engineering students for collaborative doubts solving, verified course notes sharing, and peer mentoring.
         </p>
         <p className="text-[11px] text-navy-500 pt-2">
-          Designed with Navy Blue, Cream, Teal, and Orange • Fully responsive mobile-friendly layout
+          100% Cloud-Managed Architecture &bull; Powered by Supabase Cloud &amp; Vercel
         </p>
       </footer>
 
