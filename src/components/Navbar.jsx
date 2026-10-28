@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { isSupabaseConnected } from '../lib/supabase';
 
 export default function Navbar({ 
@@ -38,9 +38,9 @@ export default function Navbar({
         <div className="flex items-center justify-between h-16">
           
           {/* Brand Logo & Name */}
-          <div 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-3 cursor-pointer select-none group"
+          <Link 
+            to="/"
+            className="flex items-center gap-3 select-none group"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-900/30 group-hover:scale-105 transition-transform">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,65 +54,65 @@ export default function Navbar({
               </div>
               <p className="text-[11px] text-navy-300 hidden sm:block font-medium">University Peer Learning & Study Exchange</p>
             </div>
-          </div>
+          </Link>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
-            <button 
-              onClick={() => navigate('/')}
+            <Link 
+              to="/"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Dashboard</span>
-            </button>
+            </Link>
 
-            <button 
-              onClick={() => navigate('/ask')}
+            <Link 
+              to="/ask"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/ask') ? 'bg-orange-600 text-white shadow-md' : 'text-orange-400 hover:bg-orange-600/20'
               }`}
             >
               <span className="text-base font-bold leading-none">+</span>
               <span>Ask a Doubt</span>
-            </button>
+            </Link>
 
-            <button 
-              onClick={() => navigate('/doubts')}
+            <Link 
+              to="/doubts"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/doubts') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Doubt Board</span>
               <span className="text-xs bg-navy-700 text-cream-200 px-1.5 py-0.5 rounded-full">{doubtsCount}</span>
-            </button>
+            </Link>
 
-            <button 
-              onClick={() => navigate('/notes')}
+            <Link 
+              to="/notes"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/notes') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Notes Library</span>
-            </button>
+            </Link>
 
-            <button 
-              onClick={() => navigate('/groups')}
+            <Link 
+              to="/groups"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/groups') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Study Groups</span>
-            </button>
+            </Link>
 
-            <button 
-              onClick={() => navigate('/tutors')}
+            <Link 
+              to="/tutors"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                 isActive('/tutors') ? 'bg-navy-800 text-teal-300 shadow-inner' : 'text-cream-200 hover:text-white hover:bg-navy-800/60'
               }`}
             >
               <span>Peer Tutors</span>
-            </button>
+            </Link>
           </nav>
 
           {/* User Account & Supabase Database Pill */}
@@ -231,6 +231,35 @@ export default function Navbar({
           </div>
 
         </div>
+
+        {/* Dedicated Page Banner / Breadcrumbs Bar when on a specific subpage */}
+        {location.pathname !== '/' && (
+          <div className="py-2.5 border-t border-navy-800/80 flex items-center justify-between text-xs animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/" 
+                className="inline-flex items-center gap-1.5 text-teal-400 hover:text-teal-300 font-bold bg-navy-800/90 px-3 py-1 rounded-xl border border-navy-700 hover:border-teal-500/40 transition shadow-sm"
+              >
+                <span>←</span>
+                <span>Back to Dashboard</span>
+              </Link>
+              <span className="text-navy-600">/</span>
+              <span className="text-cream-100 font-bold">
+                {location.pathname.startsWith('/doubts') && 'Doubt Board Forum'}
+                {location.pathname.startsWith('/notes') && 'Notes Library'}
+                {location.pathname.startsWith('/groups') && 'Study Groups Circle'}
+                {location.pathname.startsWith('/tutors') && 'Peer Tutors Directory'}
+                {location.pathname.startsWith('/ask') && 'Ask a Doubt'}
+              </span>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 text-[11px] text-teal-300/80 bg-teal-950/60 px-2.5 py-0.5 rounded-full border border-teal-500/20 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+              <span>{location.pathname}</span>
+            </div>
+          </div>
+        )}
+
       </div>
     </header>
   );

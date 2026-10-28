@@ -15,6 +15,7 @@ import LoginScreen from './components/LoginScreen';
 import UploadNoteModal from './components/UploadNoteModal';
 import CreateGroupModal from './components/CreateGroupModal';
 import BookTutorModal from './components/BookTutorModal';
+import ScrollToTop from './components/ScrollToTop';
 import { 
   supabase, 
   isConfigured as isSupabaseConfigured, 
@@ -54,9 +55,38 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 100% Cloud User State (No localStorage for DB)
-  const [user, setUser] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  // Active student session persistence across page loads & redirects
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('s2s_active_student');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setAndPersistUser = (newUser) => {
+    if (typeof newUser === 'function') {
+      setUser(prev => {
+        const nextVal = newUser(prev);
+        if (nextVal) {
+          try { sessionStorage.setItem('s2s_active_student', JSON.stringify(nextVal)); } catch (e) {}
+        } else {
+          try { sessionStorage.removeItem('s2s_active_student'); } catch (e) {}
+        }
+        return nextVal;
+      });
+    } else {
+      setUser(newUser);
+      if (newUser) {
+        try { sessionStorage.setItem('s2s_active_student', JSON.stringify(newUser)); } catch (e) {}
+      } else {
+        try { sessionStorage.removeItem('s2s_active_student'); } catch (e) {}
+      }
+    }
+  };
+
+  const [loadingAuth, setLoadingAuth] = useState(false);
 
   // Cloud Data Stores
   const [doubts, setDoubts] = useState(INITIAL_DOUBTS);
@@ -92,7 +122,7 @@ export default function App() {
               .eq('id', session.user.id)
               .maybeSingle();
 
-            setUser(normalizeProfile(profile, session.user));
+            setAndPersistUser(normalizeProfile(profile, session.user));
           }
 
           // Fetch cloud doubts & notes
@@ -165,9 +195,9 @@ export default function App() {
             .eq('id', session.user.id)
             .maybeSingle();
 
-          setUser(normalizeProfile(profile, session.user));
+          setAndPersistUser(normalizeProfile(profile, session.user));
         } else if (event === 'SIGNED_OUT') {
-          setUser(null);
+          setAndPersistUser(null);
         }
       });
 
@@ -182,44 +212,49 @@ export default function App() {
     if (isSupabaseConfigured) {
       try {
         const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
-        setUser(normalizeProfile(result.profile, newUserData));
+        setAndPersistUser(normalizeProfile(result.profile, newUserData));
         setAuthModalConfig(null);
         showNotification(`Account created in Supabase Cloud! Welcome, ${newUserData.name} ☁️`);
+        navigate('/');
       } catch (err) {
         showNotification(err.message || "Cloud registration failed", "error");
       }
     } else {
-      setUser(normalizeProfile(newUserData));
+      setAndPersistUser(normalizeProfile(newUserData));
       setAuthModalConfig(null);
       showNotification(`Welcome ${newUserData.name}!`);
+      navigate('/');
     }
   };
 
   // 100% Cloud Login Handler
   const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
-      setUser(normalizeProfile(demoUser));
+      setAndPersistUser(normalizeProfile(demoUser));
       setAuthModalConfig(null);
       showNotification(`Signed in as ${demoUser.name} (${demoUser.uid})`);
+      navigate('/');
       return;
     }
 
     if (isSupabaseConfigured) {
       try {
         const result = await cloudAuth.signIn(email, password);
-        setUser(normalizeProfile(result.profile, result.user));
+        setAndPersistUser(normalizeProfile(result.profile, result.user));
         setAuthModalConfig(null);
         showNotification(`Welcome back from Supabase Cloud! 🚀`);
+        navigate('/');
       } catch (err) {
         showNotification(err.message || "Invalid cloud login credentials", "error");
       }
     } else {
-      setUser(normalizeProfile({
+      setAndPersistUser(normalizeProfile({
         name: email.split('@')[0],
         email
       }));
       setAuthModalConfig(null);
       showNotification(`Signed in!`);
+      navigate('/');
     }
   };
 
@@ -228,7 +263,7 @@ export default function App() {
     if (isSupabaseConfigured) {
       await cloudAuth.signOut();
     }
-    setUser(null);
+    setAndPersistUser(null);
     navigate('/');
     showNotification("You have been signed out from the cloud.");
   };
@@ -257,7 +292,7 @@ export default function App() {
     };
 
     setDoubts([newDoubt, ...doubts]);
-    setUser(prev => ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }));
+    setAndPersistUser(prev => prev ? ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }) : prev);
     
     // Save to Cloud Table if Supabase is active
     if (isSupabaseConfigured && supabase) {
@@ -307,7 +342,7 @@ export default function App() {
       return d;
     }));
 
-    setUser(prev => ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }));
+    setAndPersistUser(prev => prev ? ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }) : prev);
     
     if (isSupabaseConfigured && supabase) {
       try {
@@ -384,7 +419,7 @@ export default function App() {
 
   const handleUploadNote = async (newNote) => {
     setNotes(prev => [newNote, ...prev]);
-    setUser(prev => ({ ...prev, points: (prev.points || 0) + 20 }));
+    setAndPersistUser(prev => prev ? ({ ...prev, points: (prev.points || 0) + 20 }) : prev);
     if (isSupabaseConfigured && supabase) {
       try {
         await cloudNotes.create({
@@ -500,6 +535,7 @@ export default function App() {
   // Once authenticated, render full platform:
   return (
     <div className="flex flex-col min-h-screen bg-cream-50 text-navy-900 selection:bg-teal-100 selection:text-teal-900 animate-fadeIn">
+      <ScrollToTop />
       
       {/* Toast Alert */}
       {toast && (

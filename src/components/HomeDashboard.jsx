@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function HomeDashboard({ 
   user, 
@@ -46,37 +46,37 @@ export default function HomeDashboard({
               Connect with course seniors, clear engineering doubts, access verified handwritten unit notes, or join upcoming exam study circles.
             </p>
 
-            {/* Quick Action Buttons */}
+            {/* Quick Action Buttons (Real HTML Links) */}
             <div className="flex flex-wrap items-center gap-3 mt-5">
-              <button 
-                onClick={() => navigate('/ask')}
+              <Link 
+                to="/ask"
                 className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-orange-600/30 transition-all flex items-center gap-2 hover:-translate-y-0.5"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/>
                 </svg>
                 <span>Ask a Doubt</span>
-              </button>
+              </Link>
 
-              <button 
-                onClick={() => navigate('/notes')}
+              <Link 
+                to="/notes"
                 className="bg-cream-100 hover:bg-white text-navy-900 font-bold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:-translate-y-0.5"
               >
                 <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <span>Notes Library</span>
-              </button>
+              </Link>
 
-              <button 
-                onClick={() => navigate('/groups')}
+              <Link 
+                to="/groups"
                 className="bg-navy-800/80 hover:bg-navy-700 text-cream-100 font-semibold text-sm px-4 py-2.5 rounded-xl border border-navy-600 transition-all flex items-center gap-2"
               >
                 <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 <span>Study Groups</span>
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -144,13 +144,13 @@ export default function HomeDashboard({
               </div>
               <h2 className="text-lg font-bold text-navy-900 tracking-tight">Recent Doubts Feed</h2>
             </div>
-            <button 
-              onClick={() => navigate('/doubts')}
+            <Link 
+              to="/doubts"
               className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
             >
               <span>View All ({doubts.length})</span>
               <span>→</span>
-            </button>
+            </Link>
           </div>
 
           <div className="space-y-3.5">
@@ -159,10 +159,10 @@ export default function HomeDashboard({
               const hasBestAnswer = doubt.bestAnswerFlag || doubt.best_answer_flag;
 
               return (
-                <div 
+                <Link 
+                  to={`/doubts/${doubt.id}`}
                   key={doubt.id}
-                  onClick={() => navigate(`/doubts/${doubt.id}`)}
-                  className="bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
+                  className="block bg-cream-100 hover:bg-white rounded-2xl p-5 border border-cream-200 hover:border-teal-400 transition-all shadow-soft hover:shadow-card cursor-pointer group"
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -208,7 +208,7 @@ export default function HomeDashboard({
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -225,13 +225,13 @@ export default function HomeDashboard({
               </div>
               <h2 className="text-lg font-bold text-navy-900 tracking-tight">Popular Notes</h2>
             </div>
-            <button 
-              onClick={() => navigate('/notes')}
+            <Link 
+              to="/notes"
               className="text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1"
             >
               <span>All Notes ({notes.length})</span>
               <span>→</span>
-            </button>
+            </Link>
           </div>
 
           <div className="space-y-3">
@@ -304,12 +304,12 @@ export default function HomeDashboard({
             <p className="text-xs text-cream-200 mt-1.5 leading-relaxed">
               Join open peer study rooms for Calculus, C Programming, or OS Kernel problem solving.
             </p>
-            <button 
-              onClick={() => navigate('/groups')}
-              className="mt-3.5 w-full bg-cream-50 text-navy-900 hover:bg-white font-bold text-xs py-2 rounded-xl transition shadow"
+            <Link 
+              to="/groups"
+              className="mt-3.5 block text-center w-full bg-cream-50 text-navy-900 hover:bg-white font-bold text-xs py-2.5 rounded-xl transition shadow"
             >
               Explore Study Groups ({groups.length}) →
-            </button>
+            </Link>
           </div>
 
         </div>
