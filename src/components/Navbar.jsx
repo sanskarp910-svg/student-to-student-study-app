@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { isSupabaseConnected } from '../lib/supabase';
+import { isFirebaseConfigured } from '../lib/firebase';
 
 export default function Navbar({ 
   user, 
@@ -14,7 +14,7 @@ export default function Navbar({
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const isConnected = typeof isSupabaseConnected === 'function' ? isSupabaseConnected() : Boolean(isSupabaseConnected);
+  const isConnected = isFirebaseConfigured;
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
@@ -118,18 +118,18 @@ export default function Navbar({
           {/* User Account & Supabase Database Pill */}
           <div className="flex items-center gap-2 sm:gap-3" ref={dropdownRef}>
             
-            {/* Supabase Status Button */}
+            {/* Cloud Database Status Button */}
             <button
               onClick={onOpenSupabase}
               className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
                 isConnected
-                  ? 'bg-teal-950/70 border-teal-500/40 text-teal-300 hover:bg-teal-900'
+                  ? 'bg-orange-950/70 border-orange-500/40 text-orange-300 hover:bg-orange-900'
                   : 'bg-navy-800 border-navy-700 text-cream-300 hover:border-amber-400/60 hover:text-amber-300'
               }`}
-              title="Click to view Supabase database data and settings"
+              title="Click to view Firebase Cloud status"
             >
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span>{isConnected ? 'Supabase DB' : 'Plug in Supabase'}</span>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-orange-400 animate-pulse' : 'bg-amber-400'}`}></span>
+              <span>{isConnected ? 'Firebase Cloud' : 'Connect Firebase'}</span>
             </button>
 
             {user ? (

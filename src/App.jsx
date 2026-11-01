@@ -17,13 +17,14 @@ import CreateGroupModal from './components/CreateGroupModal';
 import BookTutorModal from './components/BookTutorModal';
 import ScrollToTop from './components/ScrollToTop';
 import { 
-  supabase, 
-  isConfigured as isSupabaseConfigured, 
+  db, 
+  auth, 
+  isFirebaseConfigured, 
   cloudAuth, 
   cloudDoubts, 
   cloudNotes, 
   cloudGroups 
-} from './lib/supabase';
+} from './lib/firebase';
 import { 
   INITIAL_DOUBTS, 
   INITIAL_NOTES, 
@@ -109,75 +110,31 @@ export default function App() {
     setTimeout(() => setToast(null), 3800);
   };
 
-  // Check Supabase Cloud Auth on Mount
+  // Check Firebase Cloud Auth on Mount
   useEffect(() => {
     async function initCloudSession() {
-      if (isSupabaseConfigured && supabase) {
+      if (isFirebaseConfigured) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            setAndPersistUser(normalizeProfile(profile, session.user));
-          }
-
-          // Fetch cloud doubts & notes
-          const [cloudDoubtsData, cloudNotesData] = await Promise.all([
+          // Fetch cloud doubts & notes from Firestore
+          const [cloudDoubtsData, cloudNotesData, cloudGroupsData] = await Promise.all([
             cloudDoubts.fetchAll().catch(() => []),
-            cloudNotes.fetchAll().catch(() => [])
+            cloudNotes.fetchAll().catch(() => []),
+            cloudGroups.fetchAll().catch(() => [])
           ]);
 
           if (cloudDoubtsData && cloudDoubtsData.length > 0) {
-            const formattedDoubts = cloudDoubtsData.map(d => ({
-              id: d.id,
-              title: d.title,
-              questionText: d.question_text || d.questionText || '',
-              codeSnippet: d.code_snippet || d.codeSnippet || '',
-              subject: d.subject || 'General',
-              semester: d.semester || 'Semester 1',
-              authorName: d.author_name || d.authorName || 'Student',
-              authorUid: d.author_uid || d.authorUid || 'STD',
-              authorCollege: d.author_college || d.authorCollege || 'University',
-              createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Recent',
-              views: d.views_count || d.views || 1,
-              bestAnswerFlag: d.best_answer_flag || d.bestAnswerFlag || false,
-              answers: Array.isArray(d.answers) ? d.answers.map(a => ({
-                id: a.id,
-                authorName: a.author_name || 'Senior Peer',
-                authorUid: a.author_uid || 'STD',
-                authorCollege: 'Campus Senior',
-                authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-                answerText: a.answer_text || a.answerText || '',
-                createdAt: a.created_at ? new Date(a.created_at).toLocaleDateString() : 'Recent',
-                upvotes: a.upvotes_count || 0,
-                isBestAnswer: a.is_best_answer || false,
-                ratings: []
-              })) : []
-            }));
-            setDoubts(formattedDoubts);
+            setDoubts(cloudDoubtsData);
           }
 
           if (cloudNotesData && cloudNotesData.length > 0) {
-            const formattedNotes = cloudNotesData.map(n => ({
-              id: n.id,
-              title: n.title,
-              subject: n.subject || 'General',
-              semester: n.semester || 'Semester 1',
-              uploaderName: n.uploader_name || n.uploaderName || 'Peer Contributor',
-              downloads: n.downloads_count || n.downloads || 0,
-              rating: Number(n.rating || 5.0),
-              pages: n.pages || 24,
-              fileSize: n.file_size || '3.5 MB',
-              description: n.description || 'Comprehensive handwritten unit notes and solved questions.'
-            }));
-            setNotes(formattedNotes);
+            setNotes(cloudNotesData);
+          }
+
+          if (cloudGroupsData && cloudGroupsData.length > 0) {
+            setGroups(cloudGroupsData);
           }
         } catch (err) {
-          console.warn("Cloud session fetch error:", err);
+          console.warn("Firebase initial fetch error:", err);
         }
       }
       setLoadingAuth(false);
@@ -185,60 +142,42 @@ export default function App() {
 
     initCloudSession();
 
-    // Listen to Supabase Auth State changes in Real Time
-    if (isSupabaseConfigured && supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
+    // Listen to Firebase Auth State changes in Real Time
+    const unsubscribe = cloudAuth.onAuthStateChange(async (event, data) => {
+      if (event === 'SIGNED_IN' && data?.user) {
+        const profile = data.profile || {};
+        setAndPersistUser(normalizeProfile(profile, data.user));
+      } else if (event === 'SIGNED_OUT') {
+        setAndPersistUser(null);
+      }
+    });
 
-          setAndPersistUser(normalizeProfile(profile, session.user));
-        } else if (event === 'SIGNED_OUT') {
-          setAndPersistUser(null);
-        }
-      });
-
-      return () => {
-        subscription?.unsubscribe();
-      };
-    }
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
-  // 100% Cloud Registration Handler
+  // 100% Firebase Cloud Registration Handler
   const handleRegister = async (newUserData) => {
-    if (isSupabaseConfigured) {
-      try {
-        const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
-        const profileObj = normalizeProfile(result.profile, newUserData);
-        setAndPersistUser(profileObj);
-        setAuthModalConfig(null);
-        if (result.rateLimitBypassed) {
-          showNotification(`Registered! Rate-limit bypassed & signed in directly 🎓`);
-        } else {
-          showNotification(`Account created in Supabase Cloud! Welcome, ${newUserData.name} ☁️`);
-        }
-        navigate('/');
-      } catch (err) {
-        // Ultimate fallback: if Supabase completely rejects due to rate limits or IP bans, let the student in seamlessly
-        console.warn("Cloud registration exception caught:", err);
-        const profileObj = normalizeProfile(newUserData);
-        setAndPersistUser(profileObj);
-        setAuthModalConfig(null);
-        showNotification(`Welcome to Study App, ${newUserData.name}! (Fast-tracked)`, "info");
-        navigate('/');
-      }
-    } else {
-      setAndPersistUser(normalizeProfile(newUserData));
+    try {
+      const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
+      const profileObj = normalizeProfile(result.profile, newUserData);
+      setAndPersistUser(profileObj);
       setAuthModalConfig(null);
-      showNotification(`Welcome ${newUserData.name}!`);
+      showNotification(`Account created in Firebase Cloud! Welcome, ${newUserData.name} 🔥`);
+      navigate('/');
+    } catch (err) {
+      console.warn("Firebase registration note:", err);
+      // Seamless fallback to let student in immediately
+      const profileObj = normalizeProfile(newUserData);
+      setAndPersistUser(profileObj);
+      setAuthModalConfig(null);
+      showNotification(`Welcome, ${newUserData.name}! (Firebase setup mode active)`);
       navigate('/');
     }
   };
 
-  // 100% Cloud Login Handler
+  // 100% Firebase Cloud Login Handler
   const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
       setAndPersistUser(normalizeProfile(demoUser));
@@ -248,35 +187,23 @@ export default function App() {
       return;
     }
 
-    if (isSupabaseConfigured) {
-      try {
-        const result = await cloudAuth.signIn(email, password);
-        setAndPersistUser(normalizeProfile(result.profile, result.user));
-        setAuthModalConfig(null);
-        showNotification(`Welcome back from Supabase Cloud! 🚀`);
-        navigate('/');
-      } catch (err) {
-        showNotification(err.message || "Invalid cloud login credentials", "error");
-      }
-    } else {
-      setAndPersistUser(normalizeProfile({
-        name: email.split('@')[0],
-        email
-      }));
+    try {
+      const result = await cloudAuth.signIn(email, password);
+      setAndPersistUser(normalizeProfile(result.profile, result.user));
       setAuthModalConfig(null);
-      showNotification(`Signed in!`);
+      showNotification(`Welcome back from Firebase Cloud! 🚀`);
       navigate('/');
+    } catch (err) {
+      showNotification(err.message || "Invalid cloud login credentials", "error");
     }
   };
 
   // Cloud Sign Out
   const handleLogout = async () => {
-    if (isSupabaseConfigured) {
-      await cloudAuth.signOut();
-    }
+    await cloudAuth.signOut().catch(() => {});
     setAndPersistUser(null);
     navigate('/');
-    showNotification("You have been signed out from the cloud.");
+    showNotification("You have been signed out.");
   };
 
   const handleOpenDoubt = (id) => {
@@ -305,22 +232,22 @@ export default function App() {
     setDoubts([newDoubt, ...doubts]);
     setAndPersistUser(prev => prev ? ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }) : prev);
     
-    // Save to Cloud Table if Supabase is active
-    if (isSupabaseConfigured && supabase) {
+    // Save to Cloud Table if Firebase is active
+    if (isFirebaseConfigured) {
       try {
         await cloudDoubts.create({
           title: newDoubt.title,
-          question_text: newDoubt.questionText,
-          code_snippet: newDoubt.codeSnippet,
+          questionText: newDoubt.questionText,
+          codeSnippet: newDoubt.codeSnippet,
           subject: newDoubt.subject,
           semester: newDoubt.semester,
-          author_name: newDoubt.authorName,
-          author_uid: newDoubt.authorUid,
-          author_college: newDoubt.authorCollege,
-          views_count: 1
+          authorName: newDoubt.authorName,
+          authorUid: newDoubt.authorUid,
+          authorCollege: newDoubt.authorCollege,
+          views: 1
         });
       } catch (err) {
-        console.warn("Cloud doubt save:", err);
+        console.warn("Firebase doubt save note:", err);
       }
     }
 
@@ -355,17 +282,11 @@ export default function App() {
 
     setAndPersistUser(prev => prev ? ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }) : prev);
     
-    if (isSupabaseConfigured && supabase) {
+    if (isFirebaseConfigured) {
       try {
-        await cloudDoubts.addAnswer({
-          author_name: newAnswer.authorName,
-          author_uid: newAnswer.authorUid,
-          answer_text: newAnswer.answerText,
-          upvotes_count: 0,
-          is_best_answer: false
-        });
+        await cloudDoubts.addAnswer(doubtId, newAnswer);
       } catch (err) {
-        console.warn("Cloud answer save:", err);
+        console.warn("Firebase answer save note:", err);
       }
     }
 
@@ -389,7 +310,7 @@ export default function App() {
       }
       return d;
     }));
-    cloudDoubts.upvoteAnswer(answerId, newVotes);
+    cloudDoubts.upvoteAnswer(doubtId, answerId, newVotes);
     showNotification("Upvoted! Thank you for encouraging quality answers.");
   };
 
@@ -431,21 +352,21 @@ export default function App() {
   const handleUploadNote = async (newNote) => {
     setNotes(prev => [newNote, ...prev]);
     setAndPersistUser(prev => prev ? ({ ...prev, points: (prev.points || 0) + 20 }) : prev);
-    if (isSupabaseConfigured && supabase) {
+    if (isFirebaseConfigured) {
       try {
         await cloudNotes.create({
           title: newNote.title,
           subject: newNote.subject,
           semester: newNote.semester,
           description: newNote.description,
-          pages_count: newNote.pages,
-          file_size: newNote.fileSize,
-          uploader_name: newNote.uploaderName,
-          uploader_uid: newNote.uploaderUid,
-          downloads_count: 0
+          pages: newNote.pages,
+          fileSize: newNote.fileSize,
+          uploaderName: newNote.uploaderName,
+          uploaderUid: newNote.uploaderUid,
+          downloads: 0
         });
       } catch (err) {
-        console.warn("Cloud note upload:", err);
+        console.warn("Firebase note upload note:", err);
       }
     }
     showNotification("Note uploaded successfully! +20 points earned 🎉");
