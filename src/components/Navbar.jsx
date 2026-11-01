@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { isFirebaseConfigured } from '../lib/firebase';
+import { isSupabaseConnected } from '../lib/supabase';
 
 export default function Navbar({ 
   user, 
@@ -14,7 +14,7 @@ export default function Navbar({
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const isConnected = isFirebaseConfigured;
+  const isConnected = typeof isSupabaseConnected === 'function' ? isSupabaseConnected() : Boolean(isSupabaseConnected);
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
@@ -123,13 +123,13 @@ export default function Navbar({
               onClick={onOpenSupabase}
               className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
                 isConnected
-                  ? 'bg-orange-950/70 border-orange-500/40 text-orange-300 hover:bg-orange-900'
+                  ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900'
                   : 'bg-navy-800 border-navy-700 text-cream-300 hover:border-amber-400/60 hover:text-amber-300'
               }`}
-              title="Click to view Firebase Cloud status"
+              title="Click to view Supabase Cloud status"
             >
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-orange-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span>{isConnected ? 'Firebase Cloud' : 'Connect Firebase'}</span>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+              <span>{isConnected ? 'Supabase Cloud' : 'Connect Cloud'}</span>
             </button>
 
             {user ? (

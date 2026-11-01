@@ -17,14 +17,13 @@ import CreateGroupModal from './components/CreateGroupModal';
 import BookTutorModal from './components/BookTutorModal';
 import ScrollToTop from './components/ScrollToTop';
 import { 
-  db, 
-  auth, 
-  isFirebaseConfigured, 
+  supabase, 
+  isConfigured as isSupabaseConfigured, 
   cloudAuth, 
   cloudDoubts, 
   cloudNotes, 
   cloudGroups 
-} from './lib/firebase';
+} from './lib/supabase';
 import { 
   INITIAL_DOUBTS, 
   INITIAL_NOTES, 
@@ -110,12 +109,12 @@ export default function App() {
     setTimeout(() => setToast(null), 3800);
   };
 
-  // Check Firebase Cloud Auth on Mount
+  // Check Supabase Cloud Auth on Mount
   useEffect(() => {
     async function initCloudSession() {
-      if (isFirebaseConfigured) {
+      if (isSupabaseConfigured) {
         try {
-          // Fetch cloud doubts & notes from Firestore
+          // Fetch cloud doubts & notes from Supabase
           const [cloudDoubtsData, cloudNotesData, cloudGroupsData] = await Promise.all([
             cloudDoubts.fetchAll().catch(() => []),
             cloudNotes.fetchAll().catch(() => []),
@@ -134,7 +133,7 @@ export default function App() {
             setGroups(cloudGroupsData);
           }
         } catch (err) {
-          console.warn("Firebase initial fetch error:", err);
+          console.warn("Supabase initial fetch error:", err);
         }
       }
       setLoadingAuth(false);
@@ -142,7 +141,7 @@ export default function App() {
 
     initCloudSession();
 
-    // Listen to Firebase Auth State changes in Real Time
+    // Listen to Supabase Auth State changes in Real Time
     const unsubscribe = cloudAuth.onAuthStateChange(async (event, data) => {
       if (event === 'SIGNED_IN' && data?.user) {
         const profile = data.profile || {};
@@ -157,27 +156,27 @@ export default function App() {
     };
   }, []);
 
-  // 100% Firebase Cloud Registration Handler
+  // 100% Supabase Cloud Registration Handler
   const handleRegister = async (newUserData) => {
     try {
       const result = await cloudAuth.signUp(newUserData.email, newUserData.password, newUserData);
       const profileObj = normalizeProfile(result.profile, newUserData);
       setAndPersistUser(profileObj);
       setAuthModalConfig(null);
-      showNotification(`Account created in Firebase Cloud! Welcome, ${newUserData.name} 🔥`);
+      showNotification(`Account registered in Supabase Cloud! Welcome, ${newUserData.name} 🎓`);
       navigate('/');
     } catch (err) {
-      console.warn("Firebase registration note:", err);
+      console.warn("Supabase registration note:", err);
       // Seamless fallback to let student in immediately
       const profileObj = normalizeProfile(newUserData);
       setAndPersistUser(profileObj);
       setAuthModalConfig(null);
-      showNotification(`Welcome, ${newUserData.name}! (Firebase setup mode active)`);
+      showNotification(`Welcome, ${newUserData.name}! (Campus profile active)`);
       navigate('/');
     }
   };
 
-  // 100% Firebase Cloud Login Handler
+  // 100% Supabase Cloud Login Handler
   const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
       setAndPersistUser(normalizeProfile(demoUser));
@@ -191,10 +190,10 @@ export default function App() {
       const result = await cloudAuth.signIn(email, password);
       setAndPersistUser(normalizeProfile(result.profile, result.user));
       setAuthModalConfig(null);
-      showNotification(`Welcome back from Firebase Cloud! 🚀`);
+      showNotification(`Welcome back to Supabase Cloud! 🚀`);
       navigate('/');
     } catch (err) {
-      showNotification(err.message || "Invalid cloud login credentials", "error");
+      showNotification(err.message || "Invalid login credentials", "error");
     }
   };
 
@@ -232,10 +231,10 @@ export default function App() {
     setDoubts([newDoubt, ...doubts]);
     setAndPersistUser(prev => prev ? ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }) : prev);
     
-    // Save to Cloud Table if Firebase is active
-    if (isFirebaseConfigured) {
+    // Save to Cloud Table if Supabase is active
+    if (isSupabaseConfigured) {
       try {
-        await cloudDoubts.create({
+        const saved = await cloudDoubts.create({
           title: newDoubt.title,
           questionText: newDoubt.questionText,
           codeSnippet: newDoubt.codeSnippet,
@@ -246,8 +245,11 @@ export default function App() {
           authorCollege: newDoubt.authorCollege,
           views: 1
         });
+        if (saved?.id) {
+          newDoubt.id = saved.id;
+        }
       } catch (err) {
-        console.warn("Firebase doubt save note:", err);
+        console.warn("Supabase doubt save note:", err);
       }
     }
 
@@ -282,11 +284,11 @@ export default function App() {
 
     setAndPersistUser(prev => prev ? ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }) : prev);
     
-    if (isFirebaseConfigured) {
+    if (isSupabaseConfigured) {
       try {
         await cloudDoubts.addAnswer(doubtId, newAnswer);
       } catch (err) {
-        console.warn("Firebase answer save note:", err);
+        console.warn("Supabase answer save note:", err);
       }
     }
 
@@ -352,9 +354,9 @@ export default function App() {
   const handleUploadNote = async (newNote) => {
     setNotes(prev => [newNote, ...prev]);
     setAndPersistUser(prev => prev ? ({ ...prev, points: (prev.points || 0) + 20 }) : prev);
-    if (isFirebaseConfigured) {
+    if (isSupabaseConfigured) {
       try {
-        await cloudNotes.create({
+        const saved = await cloudNotes.create({
           title: newNote.title,
           subject: newNote.subject,
           semester: newNote.semester,
@@ -365,8 +367,11 @@ export default function App() {
           uploaderUid: newNote.uploaderUid,
           downloads: 0
         });
+        if (saved?.id) {
+          newNote.id = saved.id;
+        }
       } catch (err) {
-        console.warn("Firebase note upload note:", err);
+        console.warn("Supabase note upload note:", err);
       }
     }
     showNotification("Note uploaded successfully! +20 points earned 🎉");
