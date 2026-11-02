@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SUBJECT_OPTIONS, SEMESTER_OPTIONS, MOCK_USERS } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen({ onLogin, onRegister }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [cloudProfiles, setCloudProfiles] = useState([]);
+
+  useEffect(() => {
+    async function loadCloudProfiles() {
+      if (!supabase) return;
+      try {
+        const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(6);
+        if (data && data.length > 0) {
+          setCloudProfiles(data);
+        }
+      } catch (e) {}
+    }
+    loadCloudProfiles();
+  }, []);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -160,20 +175,20 @@ export default function LoginScreen({ onLogin, onRegister }) {
                 </button>
               </form>
 
-              {/* 1-Click Demo Profiles */}
+              {/* 1-Click Campus & Demo Profiles */}
               <div className="pt-4 border-t border-cream-200">
                 <span className="text-[11px] font-bold text-navy-500 uppercase tracking-wider block mb-2 text-center">
-                  Or One-Click Login as Demo Student:
+                  {cloudProfiles.length > 0 ? "Or One-Click Login with Active Campus Student:" : "Or One-Click Login as Demo Student:"}
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  {MOCK_USERS.map((usr) => (
+                  {(cloudProfiles.length > 0 ? cloudProfiles : MOCK_USERS).slice(0, 6).map((usr) => (
                     <button
                       key={usr.uid}
                       type="button"
                       onClick={() => onLogin({ user: usr })}
                       className="flex items-center gap-2 p-2 bg-cream-50 hover:bg-teal-50 hover:border-teal-400 border border-cream-300 rounded-xl transition text-left group"
                     >
-                      <img src={usr.avatar} alt={usr.name} className="w-7 h-7 rounded-lg object-cover ring-1 ring-teal-500" />
+                      <img src={usr.avatar || "https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80"} alt={usr.name} className="w-7 h-7 rounded-lg object-cover ring-1 ring-teal-500" />
                       <div className="truncate">
                         <p className="text-xs font-bold text-navy-900 group-hover:text-teal-800 truncate">{usr.name}</p>
                         <p className="text-[10px] text-navy-500 font-mono truncate">{usr.uid}</p>

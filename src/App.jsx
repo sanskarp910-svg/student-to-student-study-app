@@ -200,18 +200,40 @@ export default function App() {
   // 100% Supabase Cloud Login Handler
   const handleLogin = async ({ email, password, user: demoUser }) => {
     if (demoUser) {
-      setAndPersistUser(normalizeProfile(demoUser));
+      const normalized = normalizeProfile(demoUser);
+      setAndPersistUser(normalized);
       setAuthModalConfig(null);
       showNotification(`Signed in as ${demoUser.name} (${demoUser.uid})`);
+      
+      // Update points in Supabase on login so dashboard reflects active login activity
+      if (supabase && demoUser.uid) {
+        supabase
+          .from('profiles')
+          .update({ points: (normalized.points || 100) + 5 })
+          .eq('uid', demoUser.uid)
+          .catch(() => {});
+      }
+
       navigate('/');
       return;
     }
 
     try {
       const result = await cloudAuth.signIn(email, password);
-      setAndPersistUser(normalizeProfile(result.profile, result.user));
+      const normalized = normalizeProfile(result.profile, result.user);
+      setAndPersistUser(normalized);
       setAuthModalConfig(null);
-      showNotification(`Welcome back to Supabase Cloud! 🚀`);
+
+      // Award +5 login points and update Supabase row
+      if (supabase && normalized?.uid) {
+        await supabase
+          .from('profiles')
+          .update({ points: (normalized.points || 100) + 5 })
+          .eq('uid', normalized.uid)
+          .catch(() => {});
+      }
+
+      showNotification(`Welcome back to Supabase Cloud! 🚀 (+5 points earned)`);
       navigate('/');
     } catch (err) {
       showNotification(err.message || "Invalid login credentials", "error");
