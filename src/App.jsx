@@ -151,8 +151,29 @@ export default function App() {
       }
     });
 
+    // Realtime listener for doubts, answers, notes
+    let realtimeChannel = null;
+    if (supabase) {
+      realtimeChannel = supabase
+        .channel('campus-live-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'doubts' }, async () => {
+          const fresh = await cloudDoubts.fetchAll().catch(() => []);
+          if (fresh.length > 0) setDoubts(fresh);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, async () => {
+          const fresh = await cloudDoubts.fetchAll().catch(() => []);
+          if (fresh.length > 0) setDoubts(fresh);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, async () => {
+          const fresh = await cloudNotes.fetchAll().catch(() => []);
+          if (fresh.length > 0) setNotes(fresh);
+        })
+        .subscribe();
+    }
+
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
+      if (realtimeChannel && supabase) supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
@@ -212,7 +233,7 @@ export default function App() {
 
   // Cloud Doubt Creation
   const handlePostDoubt = async (newDoubtData) => {
-    const newDoubt = {
+    let finalDoubt = {
       id: `dbt-${Date.now()}`,
       title: newDoubtData.title,
       questionText: newDoubtData.questionText,
@@ -228,37 +249,37 @@ export default function App() {
       answers: []
     };
 
-    setDoubts([newDoubt, ...doubts]);
-    setAndPersistUser(prev => prev ? ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }) : prev);
-    
     // Save to Cloud Table if Supabase is active
     if (isSupabaseConfigured) {
       try {
         const saved = await cloudDoubts.create({
-          title: newDoubt.title,
-          questionText: newDoubt.questionText,
-          codeSnippet: newDoubt.codeSnippet,
-          subject: newDoubt.subject,
-          semester: newDoubt.semester,
-          authorName: newDoubt.authorName,
-          authorUid: newDoubt.authorUid,
-          authorCollege: newDoubt.authorCollege,
+          title: finalDoubt.title,
+          questionText: finalDoubt.questionText,
+          codeSnippet: finalDoubt.codeSnippet,
+          subject: finalDoubt.subject,
+          semester: finalDoubt.semester,
+          authorName: finalDoubt.authorName,
+          authorUid: finalDoubt.authorUid,
+          authorCollege: finalDoubt.authorCollege,
           views: 1
         });
         if (saved?.id) {
-          newDoubt.id = saved.id;
+          finalDoubt = { ...finalDoubt, ...saved };
         }
       } catch (err) {
         console.warn("Supabase doubt save note:", err);
       }
     }
 
+    setDoubts(prev => [finalDoubt, ...prev]);
+    setAndPersistUser(prev => prev ? ({ ...prev, doubtsCount: (prev.doubtsCount || 0) + 1, points: (prev.points || 0) + 10 }) : prev);
     showNotification("Your doubt has been posted to the campus community! 🎉");
-    navigate(`/doubts/${newDoubt.id}`);
+    navigate(`/doubts/${finalDoubt.id}`);
   };
 
   // Cloud Answer Creation
   const handleAddAnswer = async (doubtId, answerText) => {
+    let savedAnswer = null;
     const newAnswer = {
       id: `ans-${Date.now()}`,
       authorName: user.name,
@@ -272,26 +293,27 @@ export default function App() {
       ratings: []
     };
 
+    if (isSupabaseConfigured) {
+      try {
+        savedAnswer = await cloudDoubts.addAnswer(doubtId, newAnswer);
+      } catch (err) {
+        console.warn("Supabase answer save note:", err);
+      }
+    }
+
+    const answerToStore = savedAnswer ? { ...newAnswer, id: savedAnswer.id } : newAnswer;
+
     setDoubts(prev => prev.map(d => {
       if (d.id === doubtId) {
         return {
           ...d,
-          answers: [...(d.answers || []), newAnswer]
+          answers: [...(d.answers || []), answerToStore]
         };
       }
       return d;
     }));
 
     setAndPersistUser(prev => prev ? ({ ...prev, answersCount: (prev.answersCount || 0) + 1, points: (prev.points || 0) + 25 }) : prev);
-    
-    if (isSupabaseConfigured) {
-      try {
-        await cloudDoubts.addAnswer(doubtId, newAnswer);
-      } catch (err) {
-        console.warn("Supabase answer save note:", err);
-      }
-    }
-
     showNotification("Answer posted! +25 peer contribution points 🚀");
   };
 
@@ -352,28 +374,26 @@ export default function App() {
   };
 
   const handleUploadNote = async (newNote) => {
-    setNotes(prev => [newNote, ...prev]);
-    setAndPersistUser(prev => prev ? ({ ...prev, points: (prev.points || 0) + 20 }) : prev);
+    let finalNote = { ...newNote };
     if (isSupabaseConfigured) {
       try {
         const saved = await cloudNotes.create({
           title: newNote.title,
           subject: newNote.subject,
           semester: newNote.semester,
-          description: newNote.description,
-          pages: newNote.pages,
-          fileSize: newNote.fileSize,
           uploaderName: newNote.uploaderName,
-          uploaderUid: newNote.uploaderUid,
           downloads: 0
         });
         if (saved?.id) {
-          newNote.id = saved.id;
+          finalNote = { ...newNote, ...saved };
         }
       } catch (err) {
         console.warn("Supabase note upload note:", err);
       }
     }
+
+    setNotes(prev => [finalNote, ...prev]);
+    setAndPersistUser(prev => prev ? ({ ...prev, points: (prev.points || 0) + 20 }) : prev);
     showNotification("Note uploaded successfully! +20 points earned 🎉");
   };
 

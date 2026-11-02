@@ -80,9 +80,19 @@ export const cloudAuth = {
 
       if (res.data?.user) {
         profile.id = res.data.user.id;
-        profile.email = email.trim();
-        // Insert profile into database
-        await supabase.from('profiles').insert([profile]).catch(() => {});
+        const profilePayload = {
+          id: res.data.user.id,
+          name: studentData.name,
+          uid: studentData.uid,
+          college: studentData.college,
+          course: studentData.course,
+          semester: studentData.semester,
+          subjects: studentData.subjects || [],
+          points: 100,
+          avatar: studentData.avatar || `https://images.unsplash.com/photo-1534528741775?auto=format&fit=crop&w=200&q=80`
+        };
+        const { error: pErr } = await supabase.from('profiles').insert([profilePayload]);
+        if (pErr) console.warn("Profile table insert note:", pErr.message);
         return { user: res.data.user, profile };
       }
 
@@ -300,6 +310,20 @@ export const cloudDoubts = {
 
   async addAnswer(doubtId, answer) {
     if (!supabase) throw new Error("Supabase not configured");
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(doubtId);
+    if (!isUUID) {
+      console.warn("doubtId is not a UUID, storing answer locally:", doubtId);
+      return {
+        id: `ans-${Date.now()}`,
+        authorName: answer.authorName || answer.author_name || 'Peer',
+        authorUid: answer.authorUid || answer.author_uid || 'STD-PEER',
+        answerText: answer.answerText || answer.answer_text || answer.text || '',
+        upvotes: 0,
+        isBestAnswer: false,
+        createdAt: 'Just now'
+      };
+    }
 
     const payload = {
       doubt_id: doubtId,
